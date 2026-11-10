@@ -1,0 +1,74 @@
+import argparse
+import os
+import sys
+
+from . import db, paths
+
+
+def cmd_add(args):
+    folder = os.path.abspath(os.path.expanduser(args.folder))
+    if not os.path.isdir(folder):
+        sys.exit(f"not a folder: {folder}")
+    conn = db.connect(paths.db_path())
+    conn.execute("insert or ignore into roots (path) values (?)", (folder,))
+    conn.commit()
+    print(f"added {folder}")
+
+
+def cmd_index(args):
+    from .embed import Embedder
+    from .indexer import AlreadyRunning, index_lock, run
+    from .transcribe import Transcriber
+
+    conn = db.connect(paths.db_path())
+    try:
+        with index_lock():
+            counts = run(conn, Transcriber(), Embedder())
+    except AlreadyRunning:
+        sys.exit("another hearsay index is already running")
+    print(counts)
+
+
+def cmd_status(args):
+    conn = db.connect(paths.db_path())
+    rows = conn.execute("select status, count(*) n, coalesce(sum(duration), 0) d from sources group by status")
+    for r in rows:
+        print(f"{r['status']:10} {r['n']:5} files  {r['d'] / 3600:.2f} h")
+    n = conn.execute("select count(*) from chunks").fetchone()[0]
+    print(f"{n} chunks")
+
+
+def cmd_models_pull(args):
+    from .embed import Embedder
+    from .transcribe import Transcriber
+
+    t = Transcriber(allow_download=True)
+    print(f"whisper: {t.model_name} ({t.device})")
+    t._load()
+    e = Embedder(allow_download=True)
+    print(f"embedder: {e.model_name}")
+    e.encode(["warm up"])
+    print("ok")
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="hearsay")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    a = sub.add_parser("add", help="register a folder of recordings")
+    a.add_argument("folder")
+    a.set_defaults(fn=cmd_add)
+
+    sub.add_parser("index", help="transcribe and index anything new or changed").set_defaults(fn=cmd_index)
+    sub.add_parser("status", help="show what is indexed").set_defaults(fn=cmd_status)
+
+    m = sub.add_parser("models", help="model management")
+    msub = m.add_subparsers(dest="mcmd", required=True)
+    msub.add_parser("pull", help="download the models").set_defaults(fn=cmd_models_pull)
+
+    args = p.parse_args(argv)
+    args.fn(args)
+
+
+if __name__ == "__main__":
+    main()

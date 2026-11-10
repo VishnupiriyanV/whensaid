@@ -1,0 +1,59 @@
+import sqlite3
+from pathlib import Path
+
+SCHEMA = """
+create table if not exists roots (
+    path text primary key
+);
+
+create table if not exists sources (
+    id integer primary key,
+    path text unique not null,
+    size integer,
+    mtime_ns integer,
+    duration real,
+    status text not null default 'pending',  -- pending, done, no_audio, failed
+    error text,
+    indexed_at text
+);
+
+create table if not exists segments (
+    id integer primary key,
+    source_id integer not null references sources(id) on delete cascade,
+    start real not null,
+    end real not null,
+    text text not null
+);
+create index if not exists segments_source on segments(source_id, start);
+
+create table if not exists chunks (
+    id integer primary key,
+    source_id integer not null references sources(id) on delete cascade,
+    start real not null,
+    end real not null,
+    text text not null,
+    embedding blob
+);
+create index if not exists chunks_source on chunks(source_id, start);
+
+create virtual table if not exists chunks_fts using fts5(text, tokenize='porter unicode61');
+"""
+
+
+def connect(path: Path) -> sqlite3.Connection:
+    conn = sqlite3.connect(path, timeout=30)
+    conn.row_factory = sqlite3.Row
+    conn.execute("pragma journal_mode = wal")
+    conn.execute("pragma foreign_keys = on")
+    conn.executescript(SCHEMA)
+    return conn
+
+
+def forget_source(conn: sqlite3.Connection, source_id: int) -> None:
+    # fts rows are not tied to chunks by a foreign key, so clear them by hand
+    conn.execute(
+        "delete from chunks_fts where rowid in (select id from chunks where source_id = ?)",
+        (source_id,),
+    )
+    conn.execute("delete from chunks where source_id = ?", (source_id,))
+    conn.execute("delete from segments where source_id = ?", (source_id,))
