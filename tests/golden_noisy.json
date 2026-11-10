@@ -1,0 +1,220 @@
+{
+ "queries": [
+  {
+   "query": "throw in a toothpick",
+   "kind": "exact",
+   "file": "Japanese_Surrender_News_1.mp3",
+   "start": 20,
+   "end": 80
+  },
+  {
+   "query": "president announces Japan accepted Potsdam terms and MacArthur will accept the surrender",
+   "kind": "para",
+   "file": "Japanese_Surrender_News_1.mp3",
+   "start": 425,
+   "end": 490
+  },
+  {
+   "query": "capital city erupts in wild celebration outside the executive mansion after the news broke",
+   "kind": "para",
+   "file": "Japanese_Surrender_News_1.mp3",
+   "start": 545,
+   "end": 600
+  },
+  {
+   "query": "German plane shot down into the sea beside the ship at night",
+   "kind": "para",
+   "file": "NormandyInvasion-June1944blueNetwork.mp3",
+   "start": 90,
+   "end": 150
+  },
+  {
+   "query": "low-flying German JU88",
+   "kind": "exact",
+   "file": "NormandyInvasion-June1944blueNetwork.mp3",
+   "start": 160,
+   "end": 215
+  },
+  {
+   "query": "Colonel Dupuy announced",
+   "kind": "exact",
+   "file": "otr_cbsddaybroadcast.mp3",
+   "start": 1190,
+   "end": 1260
+  },
+  {
+   "query": "Major George Fielding Elliott",
+   "kind": "exact",
+   "file": "otr_cbsddaybroadcast.mp3",
+   "start": 425,
+   "end": 490
+  },
+  {
+   "query": "enemy radio claims the invasion has begun but nobody confirms it",
+   "kind": "para",
+   "file": "otr_cbsddaybroadcast.mp3",
+   "start": 0,
+   "end": 60
+  },
+  {
+   "query": "Dutch leaders warn civilians not to carry out open acts of resistance yet",
+   "kind": "para",
+   "file": "otr_cbsddaybroadcast.mp3",
+   "start": 2190,
+   "end": 2260
+  },
+  {
+   "query": "Nightingale excursion boat exploded",
+   "kind": "exact",
+   "file": "WWII_News_19410518_Walter_Winchell.mp3",
+   "start": 130,
+   "end": 180
+  },
+  {
+   "query": "Nazi plan to attack through Iraq, Palestine and Egypt toward Gibraltar",
+   "kind": "para",
+   "file": "WWII_News_19410518_Walter_Winchell.mp3",
+   "start": 175,
+   "end": 235
+  },
+  {
+   "query": "Roosevelt can depend upon a Wilkie, Hitler has only a Hess",
+   "kind": "exact",
+   "file": "WWII_News_19410518_Walter_Winchell.mp3",
+   "start": 360,
+   "end": 430
+  },
+  {
+   "query": "Private Roger Young",
+   "kind": "exact",
+   "file": "WWII_News_19450225_Walter_Winchell.mp3",
+   "start": 315,
+   "end": 375
+  },
+  {
+   "query": "argument that staying up late at night clubs is a duty to wounded soldiers, curfew",
+   "kind": "para",
+   "file": "WWII_News_19450225_Walter_Winchell.mp3",
+   "start": 195,
+   "end": 275
+  },
+  {
+   "query": "Norwegian traitor was left guarding the British embassy files in Moscow",
+   "kind": "para",
+   "file": "WWII_News_19450225_Walter_Winchell.mp3",
+   "start": 365,
+   "end": 430
+  },
+  {
+   "query": "Foreign Minister Molotov arrived by air",
+   "kind": "exact",
+   "file": "WWII_News_19450422_Drew_Pearson.mp3",
+   "start": 240,
+   "end": 300
+  },
+  {
+   "query": "new president's first week in office compared to Calvin Coolidge",
+   "kind": "para",
+   "file": "WWII_News_19450422_Drew_Pearson.mp3",
+   "start": 380,
+   "end": 450
+  },
+  {
+   "query": "prediction that the agency for ex-servicemen will be completely overhauled",
+   "kind": "para",
+   "file": "WWII_News_19450422_Drew_Pearson.mp3",
+   "start": 455,
+   "end": 515
+  },
+  {
+   "query": "Marshal Rodolfo Graziani",
+   "kind": "exact",
+   "file": "WWII_News_19450422_Walter_Winchell.mp3",
+   "start": 355,
+   "end": 415
+  },
+  {
+   "query": "too many people treating the peace conference in California like a fair",
+   "kind": "para",
+   "file": "WWII_News_19450422_Walter_Winchell.mp3",
+   "start": 205,
+   "end": 265
+  },
+  {
+   "query": "exiled Spanish republican leader wanting to visit America",
+   "kind": "para",
+   "file": "WWII_News_19450422_Walter_Winchell.mp3",
+   "start": 440,
+   "end": 500
+  },
+  {
+   "query": "Nelson Rockefeller flew back to Washington",
+   "kind": "exact",
+   "file": "WWII_News_19450506_Drew_Pearson.mp3",
+   "start": 210,
+   "end": 270
+  },
+  {
+   "query": "sixteen underground leaders from Poland jailed for working against the Soviet army",
+   "kind": "para",
+   "file": "WWII_News_19450506_Drew_Pearson.mp3",
+   "start": 295,
+   "end": 355
+  },
+  {
+   "query": "household gadgets will be back in stores soon after the war ends",
+   "kind": "para",
+   "file": "WWII_News_19450506_Drew_Pearson.mp3",
+   "start": 470,
+   "end": 530
+  },
+  {
+   "query": "Camp Clark Missouri",
+   "kind": "exact",
+   "file": "WWII_News_19450506_Walter_Winchell.mp3",
+   "start": 105,
+   "end": 165
+  },
+  {
+   "query": "governors back Philadelphia as the permanent home of the world organization",
+   "kind": "para",
+   "file": "WWII_News_19450506_Walter_Winchell.mp3",
+   "start": 270,
+   "end": 330
+  },
+  {
+   "query": "accusations against the head of the German Red Cross over prisoners",
+   "kind": "para",
+   "file": "WWII_News_19450506_Walter_Winchell.mp3",
+   "start": 345,
+   "end": 405
+  },
+  {
+   "query": "General Prince Agashi Kuni",
+   "kind": "exact",
+   "file": "WWII_News_19450816_Richard_Harkness.mp3",
+   "start": 75,
+   "end": 135
+  },
+  {
+   "query": "Japanese government message to its people hinting at revenge rather than surrender",
+   "kind": "para",
+   "file": "WWII_News_19450816_Richard_Harkness.mp3",
+   "start": 210,
+   "end": 270
+  },
+  {
+   "query": "plan for troops landing in Japan with tanks while warships wait offshore",
+   "kind": "para",
+   "file": "WWII_News_19450816_Richard_Harkness.mp3",
+   "start": 590,
+   "end": 650
+  }
+ ],
+ "negative": [
+  "Apollo moon landing astronauts",
+  "stock market crash of 1929 bank failures",
+  "television sitcom ratings",
+  "recipe for chocolate cake"
+ ]
+}

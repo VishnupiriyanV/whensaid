@@ -15,7 +15,7 @@ from hearsay.embed import Embedder
 from hearsay.rerank import Reranker
 from hearsay.search import BGE_QUERY_PREFIX, Searcher
 
-GOLDEN = Path(__file__).resolve().parent.parent / "tests" / "golden.json"
+GOLDEN = Path(os.environ.get("GOLDEN", Path(__file__).resolve().parent.parent / "tests" / "golden.json"))
 
 
 def is_hit(h, q):
