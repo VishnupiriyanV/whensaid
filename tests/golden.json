@@ -54,7 +54,8 @@
    "kind": "para",
    "file": "marktwainsspeeches_060_twain_64kb.mp3",
    "start": 536,
-   "end": 700
+   "end": 700,
+   "alt": [{"file": "twain_marktwainsspeeches_033_twain_64kb.mp3", "start": 343, "end": 515}]
   },
   {
    "query": "sleeping in a room with a dead body and counting to a hundred",
@@ -110,7 +111,8 @@
    "kind": "para",
    "file": "Doctorin1946_512kb.mp4",
    "start": 1048,
-   "end": 1126
+   "end": 1126,
+   "alt": [{"file": "Doctorin1946_512kb.mp4", "start": 570, "end": 640}]
   },
   {
    "query": "banquet to honor the famous young surgeon",

@@ -13,7 +13,7 @@ See [docs/PLAN.md](docs/PLAN.md) for the research, decisions and measured result
 
 ```bash
 uv venv && uv pip install -e ".[cuda]"      # drop [cuda] if you have no NVIDIA GPU
-hearsay models pull                         # one-off download, ~1.5 GB
+hearsay models pull                         # one-off download, ~1.6 GB (whisper, embedder, reranker)
 hearsay add ~/Videos/talks                  # register a folder
 hearsay index                               # transcribe + index anything new or changed
 hearsay status
@@ -34,7 +34,7 @@ Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
 
 ffmpeg-free decode (PyAV) -> faster-whisper with VAD and word timestamps -> ~45 s overlapping
 chunks -> bge-small embeddings -> one SQLite file (FTS5 keyword index + vectors).
-Search fuses keyword and semantic rankings (reciprocal rank fusion).
+Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about 0.8 s on CPU; `HEARSAY_RERANK=0` skips it).
 
 ## Develop
 

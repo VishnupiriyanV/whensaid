@@ -42,8 +42,9 @@ def _conn():
 def _searcher() -> Searcher:
     if "searcher" not in _state:
         from .embed import Embedder
+        from .rerank import load_reranker
 
-        _state["searcher"] = Searcher(_conn(), Embedder())
+        _state["searcher"] = Searcher(_conn(), Embedder(), reranker=load_reranker())
     return _state["searcher"]
 
 

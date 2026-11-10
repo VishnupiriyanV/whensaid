@@ -47,9 +47,11 @@ def rrf(rankings: dict[str, list[int]], k: int = 60) -> list[tuple[int, float, d
 
 
 class Searcher:
-    def __init__(self, conn, embedder, query_prefix: str = BGE_QUERY_PREFIX):
+    def __init__(self, conn, embedder, query_prefix: str = BGE_QUERY_PREFIX, reranker=None, rerank_depth: int = 20):
         self.conn = conn
         self.embedder = embedder
+        self.reranker = reranker
+        self.rerank_depth = rerank_depth
         self.query_prefix = query_prefix
         self._key = None
         self._ids = np.zeros(0, dtype=np.int64)
@@ -95,6 +97,14 @@ class Searcher:
         top = np.argsort(-sims)[:n]
         return [int(self._ids[i]) for i in top]
 
+    def _rerank(self, query, fused, rows):
+        """Reorder the top of the fused list with the cross-encoder; the tail keeps its order."""
+        head = [f for f in fused[: self.rerank_depth] if f[0] in rows]
+        scores = self.reranker.score(query, [rows[cid]["text"] for cid, _, _ in head])
+        best = sorted(zip(scores, head), key=lambda x: -x[0])
+        reranked = [(cid, sc, ranks) for sc, (cid, _, ranks) in best]
+        return reranked + fused[self.rerank_depth :]
+
     def search(self, query: str, limit: int = 10, mode: str = "hybrid", pool: int = 50, k: int = 60) -> list[Hit]:
         rankings = {}
         qv = None
@@ -107,7 +117,7 @@ class Searcher:
         if mode in ("hybrid", "semantic") and qv is not None:
             rankings["semantic"] = self.semantic_ids(query, pool, qv)
         # fetch extra, neighbouring chunks of one passage get merged below
-        fused = rrf(rankings, k)[: limit * 3]
+        fused = rrf(rankings, k)[: max(limit * 3, self.rerank_depth if self.reranker else 0)]
         if not fused:
             return []
 
@@ -120,6 +130,8 @@ class Searcher:
                 [cid for cid, _, _ in fused],
             )
         }
+        if self.reranker is not None:
+            fused = self._rerank(query, fused, rows)
         pos = {int(cid): i for i, cid in enumerate(self._ids)} if qv is not None else {}
         hits: list[Hit] = []
         for cid, score, ranks in fused:

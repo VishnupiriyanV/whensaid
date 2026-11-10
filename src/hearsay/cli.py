@@ -56,6 +56,7 @@ def cmd_search(args):
     import json
 
     from .embed import Embedder
+    from .rerank import load_reranker
     from .search import Searcher
     from .util import timecode
 
@@ -63,7 +64,7 @@ def cmd_search(args):
         conn = db.connect_readonly(paths.db_path())
     except FileNotFoundError:
         sys.exit("nothing indexed yet: hearsay add <folder>, then hearsay index")
-    hits = Searcher(conn, Embedder()).search(args.query, limit=args.limit)
+    hits = Searcher(conn, Embedder(), reranker=load_reranker()).search(args.query, limit=args.limit)
     if args.json:
         print(json.dumps([
             {"file": os.path.basename(h.path), "path": h.path, "start": round(h.start, 1),
@@ -93,6 +94,7 @@ def cmd_status(args):
 
 def cmd_models_pull(args):
     from .embed import Embedder
+    from .rerank import Reranker
     from .transcribe import Transcriber
 
     t = Transcriber(allow_download=True)
@@ -101,6 +103,9 @@ def cmd_models_pull(args):
     e = Embedder(allow_download=True)
     print(f"embedder: {e.model_name}")
     e.encode(["warm up"])
+    r = Reranker(allow_download=True)
+    print(f"reranker: {r.model_name}")
+    r.score("warm up", ["warm up"])
     print("ok")
 
 

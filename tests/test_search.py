@@ -78,3 +78,20 @@ def test_overlapping_hits_from_one_passage_are_merged(tmp_path):
     hits = Searcher(conn, emb, query_prefix="").search("cat", limit=5)
     assert len(hits) == 2
     assert not (hits[0].start < hits[1].end and hits[1].start < hits[0].end)
+
+
+class PreferShortest:
+    """Stand-in cross-encoder: shorter passages score higher."""
+    def score(self, query, texts):
+        return [-float(len(t)) for t in texts]
+
+
+def test_reranker_reorders_only_the_head(tmp_path):
+    conn = make_db(tmp_path)
+    plain = Searcher(conn, TinyEmbedder(), query_prefix="").search("cat kitten money", limit=4)
+    s = Searcher(conn, TinyEmbedder(), query_prefix="", reranker=PreferShortest(), rerank_depth=2)
+    out = s.search("cat kitten money", limit=4)
+    head = sorted(plain[:2], key=lambda h: len(h.text))
+    assert [h.chunk_id for h in out[:2]] == [h.chunk_id for h in head]
+    assert [h.chunk_id for h in out[2:]] == [h.chunk_id for h in plain[2:]]  # tail untouched
+    assert out[0].similarity is not None  # still reports cosine, not the reranker score
