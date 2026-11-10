@@ -95,3 +95,17 @@ def test_reranker_reorders_only_the_head(tmp_path):
     assert [h.chunk_id for h in out[:2]] == [h.chunk_id for h in head]
     assert [h.chunk_id for h in out[2:]] == [h.chunk_id for h in plain[2:]]  # tail untouched
     assert out[0].similarity is not None  # still reports cosine, not the reranker score
+
+
+def test_cutoff_drops_low_scoring_hits(tmp_path):
+    class ByLength:
+        def score(self, query, texts):
+            return [30.0 - len(t) for t in texts]  # the 30-char bank passage scores 0, shorter ones score higher
+
+    conn = make_db(tmp_path)
+    s = Searcher(conn, TinyEmbedder(), query_prefix="", reranker=ByLength(), min_relevance=5.0)
+    out = s.search("cat kitten money weather", limit=4)
+    assert out and all(h.relevance >= 5.0 for h in out)
+    assert len(out) < 4  # the long passages fell under the cutoff and no unscored tail sneaks in
+    none = Searcher(conn, TinyEmbedder(), query_prefix="", reranker=ByLength(), min_relevance=100.0)
+    assert none.search("cat") == []

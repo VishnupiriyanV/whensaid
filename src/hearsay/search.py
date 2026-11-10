@@ -22,6 +22,7 @@ class Hit:
     score: float
     matched_by: dict = field(default_factory=dict)  # mode -> rank
     similarity: float | None = None  # cosine to the query, None for keyword-only mode
+    relevance: float | None = None  # cross-encoder score, only set when a reranker ran
 
 
 def fts_query(text: str) -> str | None:
@@ -47,11 +48,13 @@ def rrf(rankings: dict[str, list[int]], k: int = 60) -> list[tuple[int, float, d
 
 
 class Searcher:
-    def __init__(self, conn, embedder, query_prefix: str = BGE_QUERY_PREFIX, reranker=None, rerank_depth: int = 20):
+    def __init__(self, conn, embedder, query_prefix: str = BGE_QUERY_PREFIX, reranker=None, rerank_depth: int = 20,
+                 min_relevance: float | None = None):
         self.conn = conn
         self.embedder = embedder
         self.reranker = reranker
         self.rerank_depth = rerank_depth
+        self.min_relevance = min_relevance  # drop hits the reranker scores below this
         self.query_prefix = query_prefix
         self._key = None
         self._ids = np.zeros(0, dtype=np.int64)
@@ -98,12 +101,17 @@ class Searcher:
         return [int(self._ids[i]) for i in top]
 
     def _rerank(self, query, fused, rows):
-        """Reorder the top of the fused list with the cross-encoder; the tail keeps its order."""
+        """Reorder the top of the fused list with the cross-encoder. Without a cutoff the
+        tail keeps its order; with one, only reranked hits above it are returned."""
         head = [f for f in fused[: self.rerank_depth] if f[0] in rows]
         scores = self.reranker.score(query, [rows[cid]["text"] for cid, _, _ in head])
         best = sorted(zip(scores, head), key=lambda x: -x[0])
+        if self.min_relevance is not None:
+            best = [b for b in best if b[0] >= self.min_relevance]
         reranked = [(cid, sc, ranks) for sc, (cid, _, ranks) in best]
-        return reranked + fused[self.rerank_depth :]
+        relevance = {cid: sc for sc, (cid, _, _) in best}
+        tail = [] if self.min_relevance is not None else fused[self.rerank_depth :]
+        return reranked + tail, relevance
 
     def search(self, query: str, limit: int = 10, mode: str = "hybrid", pool: int = 50, k: int = 60) -> list[Hit]:
         rankings = {}
@@ -130,8 +138,9 @@ class Searcher:
                 [cid for cid, _, _ in fused],
             )
         }
+        relevance = {}
         if self.reranker is not None:
-            fused = self._rerank(query, fused, rows)
+            fused, relevance = self._rerank(query, fused, rows)
         pos = {int(cid): i for i, cid in enumerate(self._ids)} if qv is not None else {}
         hits: list[Hit] = []
         for cid, score, ranks in fused:
@@ -142,5 +151,5 @@ class Searcher:
             # chunks overlap by a few seconds, so the same passage often matches twice
             if any(h.path == r["path"] and h.start < r["end"] and r["start"] < h.end for h in hits):
                 continue
-            hits.append(Hit(cid, r["path"], r["start"], r["end"], r["text"], score, ranks, sim))
+            hits.append(Hit(cid, r["path"], r["start"], r["end"], r["text"], score, ranks, sim, relevance.get(cid)))
         return hits[:limit]

@@ -38,12 +38,13 @@ def main():
     ap.add_argument("--modes", default="keyword,semantic,hybrid")
     ap.add_argument("--no-prefix", action="store_true", help="don't add the bge query instruction")
     ap.add_argument("--rerank", action="store_true", help="rerank the top 20 with the cross-encoder")
+    ap.add_argument("--cutoff", type=float, default=None, help="with --rerank: drop hits scored below this")
     ap.add_argument("--verbose", action="store_true", help="show the misses")
     args = ap.parse_args()
 
     golden = json.load(open(GOLDEN))
     conn = db.connect(paths.db_path())
-    searcher = Searcher(conn, Embedder(), reranker=Reranker() if args.rerank else None, query_prefix="" if args.no_prefix else BGE_QUERY_PREFIX)
+    searcher = Searcher(conn, Embedder(), reranker=Reranker() if args.rerank else None, min_relevance=args.cutoff, query_prefix="" if args.no_prefix else BGE_QUERY_PREFIX)
 
     print(f"{'mode':10} {'kind':6} {'n':>3} {'R@1':>6} {'R@5':>6} {'R@10':>6} {'MRR':>6}")
     for mode in args.modes.split(","):

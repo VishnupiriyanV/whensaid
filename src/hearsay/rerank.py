@@ -41,3 +41,16 @@ def load_reranker():
         print("hearsay: reranker model not found, run `hearsay models pull`; searching without it", file=sys.stderr)
         return None
     return r
+
+
+# Scores seen so far: off-topic queries top out around -10.5 (one outlier at -7.5), real
+# queries are above -8. Set low on purpose, a dropped real answer costs more than a weak one.
+DEFAULT_MIN_RELEVANCE = -9.0
+
+
+def min_relevance() -> float | None:
+    """HEARSAY_MIN_RELEVANCE overrides the default; 'off' disables the cutoff."""
+    v = os.environ.get("HEARSAY_MIN_RELEVANCE")
+    if v is None:
+        return DEFAULT_MIN_RELEVANCE
+    return None if v.lower() == "off" else float(v)

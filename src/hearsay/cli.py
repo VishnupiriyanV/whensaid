@@ -56,7 +56,7 @@ def cmd_search(args):
     import json
 
     from .embed import Embedder
-    from .rerank import load_reranker
+    from .rerank import load_reranker, min_relevance
     from .search import Searcher
     from .util import timecode
 
@@ -64,7 +64,7 @@ def cmd_search(args):
         conn = db.connect_readonly(paths.db_path())
     except FileNotFoundError:
         sys.exit("nothing indexed yet: hearsay add <folder>, then hearsay index")
-    hits = Searcher(conn, Embedder(), reranker=load_reranker()).search(args.query, limit=args.limit)
+    hits = Searcher(conn, Embedder(), reranker=load_reranker(), min_relevance=min_relevance()).search(args.query, limit=args.limit)
     if args.json:
         print(json.dumps([
             {"file": os.path.basename(h.path), "path": h.path, "start": round(h.start, 1),
@@ -72,6 +72,8 @@ def cmd_search(args):
             for h in hits
         ], indent=1))
         return
+    if not hits:
+        print("nothing relevant found")
     for h in hits:
         sim = "  -  " if h.similarity is None else f"{h.similarity:.2f}"
         print(f"{os.path.basename(h.path)}  {timecode(h.start)}  sim {sim}  {h.text[:200]}")

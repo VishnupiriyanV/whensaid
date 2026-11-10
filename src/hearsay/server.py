@@ -17,9 +17,11 @@ INSTRUCTIONS = """\
 Search what was said in the user's local video and audio recordings.
 Start with `search`: it returns the matching passage, the file, and where in the file it was
 said (seconds and h:mm:ss). Use `get_transcript` to read more around a hit. All times are in
-seconds from the start of the file. `similarity` is cosine similarity to the query: roughly
-below 0.55 the passage is probably unrelated. If `search` says nothing is indexed, tell the
-user to run `hearsay add <folder>` and `hearsay index`.
+seconds from the start of the file. Passages the reranker judges unrelated are left out, so an
+empty result (it comes with a note) means the recordings most likely don't cover the topic: say
+so rather than guessing. `relevance` is the reranker score (higher is better, below about -5 is
+weak); `similarity` is cosine similarity. If `search` says nothing is indexed, tell the user to
+run `hearsay add <folder>` and `hearsay index`.
 """
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
@@ -42,9 +44,9 @@ def _conn():
 def _searcher() -> Searcher:
     if "searcher" not in _state:
         from .embed import Embedder
-        from .rerank import load_reranker
+        from .rerank import load_reranker, min_relevance
 
-        _state["searcher"] = Searcher(_conn(), Embedder(), reranker=load_reranker())
+        _state["searcher"] = Searcher(_conn(), Embedder(), reranker=load_reranker(), min_relevance=min_relevance())
     return _state["searcher"]
 
 
@@ -77,7 +79,7 @@ def search(
         total = _conn().execute("select count(*) from chunks").fetchone()[0]
     if total == 0:
         raise ToolError("Nothing is indexed yet. Run `hearsay add <folder>` then `hearsay index`.")
-    return {
+    out = {
         "query": query,
         "results": [
             {
@@ -88,10 +90,14 @@ def search(
                 "at": timecode(h.start),
                 "text": h.text,
                 "similarity": None if h.similarity is None else round(h.similarity, 3),
+                "relevance": None if h.relevance is None else round(h.relevance, 1),
             }
             for h in hits
         ],
     }
+    if not hits:
+        out["note"] = "No passage was relevant enough. The recordings probably don't cover this."
+    return out
 
 
 @mcp.tool(annotations=READ_ONLY)
