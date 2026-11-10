@@ -36,6 +36,18 @@ def cmd_index(args):
     print(counts)
 
 
+def cmd_remove(args):
+    from .indexer import AlreadyRunning, index_lock, remove_root
+
+    conn = db.connect(paths.db_path())
+    try:
+        with index_lock():
+            n = remove_root(conn, args.folder)
+    except AlreadyRunning:
+        sys.exit("another hearsay index is already running")
+    print(f"removed {n} files from the index (the recordings themselves are untouched)")
+
+
 def cmd_rechunk(args):
     from .embed import Embedder
     from .indexer import AlreadyRunning, index_lock, rechunk
@@ -125,6 +137,9 @@ def main(argv=None):
     a.add_argument("folder")
     a.set_defaults(fn=cmd_add)
 
+    rm = sub.add_parser("remove", help="stop watching a folder and drop its files from the index")
+    rm.add_argument("folder")
+    rm.set_defaults(fn=cmd_remove)
     ix = sub.add_parser("index", help="transcribe and index anything new or changed")
     ix.add_argument("--watch", action="store_true", help="keep running and pick up new files as they appear")
     ix.add_argument("--interval", type=float, default=30, help="seconds between scans with --watch")

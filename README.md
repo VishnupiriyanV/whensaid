@@ -17,6 +17,7 @@ hearsay models pull                         # one-off download, ~1.6 GB (whisper
 hearsay add ~/Videos/talks                  # register a folder
 hearsay index                               # transcribe + index anything new or changed
 hearsay index --watch                       # or keep running and pick up new files (scans every 30 s)
+hearsay remove ~/Videos/old                 # stop watching a folder and drop it from the index
 hearsay status
 ```
 
@@ -29,7 +30,7 @@ claude mcp add hearsay -- /path/to/.venv/bin/hearsay serve
 Tools the agent gets (all read-only): `search`, `get_transcript`, `list_sources`, `index_status`.
 On CPU-only machines it uses the same model in int8 (about 6x realtime on 12 cores); `HEARSAY_WHISPER_MODEL=small.en` trades accuracy for speed.
 Indexing is only ever done by the `hearsay index` command, never by the agent.
-With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
+`hearsay index` also drops files that were deleted or moved (unless their folder is missing or holds no media at all, which looks like an unplugged drive). With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
 
 Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
 

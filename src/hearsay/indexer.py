@@ -91,6 +91,54 @@ def scan(conn, root: str, settle: float = 0, retry_failed: bool = True) -> list[
     return todo
 
 
+def _root_of(roots, path):
+    for r in roots:
+        if path.startswith(r.rstrip(os.sep) + os.sep):
+            return r
+    return None
+
+
+def prune(conn, log=sys.stderr) -> int:
+    """Drop index rows for files that no longer exist, returns how many.
+    Careful with unplugged drives: a root that is missing, or that exists but holds no media at
+    all (an empty mount point), is left alone, since wiping a library over that would be bad."""
+    roots = [r["path"] for r in conn.execute("select path from roots")]
+    gone: dict[str, list[int]] = {}
+    for row in conn.execute("select id, path from sources").fetchall():
+        root = _root_of(roots, row["path"])
+        if root is not None and not os.path.exists(row["path"]):
+            gone.setdefault(root, []).append(row["id"])
+    removed = 0
+    for root, ids in gone.items():
+        if not os.path.isdir(root):
+            print(f"skipping {len(ids)} missing files: {root} is not there (unplugged?)", file=log)
+            continue
+        if next(find_media(root), None) is None:
+            print(f"skipping {len(ids)} missing files: {root} has no media at all (unmounted?)", file=log)
+            continue
+        with conn:
+            for sid in ids:
+                forget_source(conn, sid)
+                conn.execute("delete from sources where id = ?", (sid,))
+        removed += len(ids)
+    if removed:
+        print(f"removed {removed} files that no longer exist", file=log)
+    return removed
+
+
+def remove_root(conn, folder: str) -> int:
+    """Stop watching a folder and forget everything indexed from it, returns files removed."""
+    folder = os.path.abspath(os.path.expanduser(folder)).rstrip(os.sep)
+    prefix = folder + os.sep
+    ids = [r["id"] for r in conn.execute("select id, path from sources") if r["path"].startswith(prefix)]
+    with conn:
+        for sid in ids:
+            forget_source(conn, sid)
+            conn.execute("delete from sources where id = ?", (sid,))
+        conn.execute("delete from roots where path = ?", (folder,))
+    return len(ids)
+
+
 def index_file(conn, path: str, transcriber, embedder) -> str:
     row = conn.execute("select id from sources where path = ?", (path,)).fetchone()
     source_id = row["id"]
@@ -152,6 +200,7 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
 
 
 def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True) -> dict:
+    prune(conn, log)
     roots = [r["path"] for r in conn.execute("select path from roots order by path")]
     todo = []
     for root in roots:
