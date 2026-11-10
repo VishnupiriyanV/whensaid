@@ -60,3 +60,21 @@ def test_modes(tmp_path):
 def test_empty_db(tmp_path):
     s = Searcher(db.connect(tmp_path / "e.db"), TinyEmbedder(), query_prefix="")
     assert s.search("anything") == []
+
+
+def test_overlapping_hits_from_one_passage_are_merged(tmp_path):
+    conn = db.connect(tmp_path / "o.db")
+    conn.execute("insert into sources (id, path, status) values (1, '/a.mp4', 'done')")
+    emb = TinyEmbedder()
+    # two chunks overlapping by 6s, plus one far away; all about cats
+    for i, (s, e) in enumerate([(0, 45), (39, 84), (200, 245)], 1):
+        t = f"cat talk number {i}"
+        conn.execute(
+            "insert into chunks (id, source_id, start, end, text, embedding) values (?, 1, ?, ?, ?, ?)",
+            (i, s, e, t, emb.encode([t])[0].tobytes()),
+        )
+        conn.execute("insert into chunks_fts (rowid, text) values (?, ?)", (i, t))
+    conn.commit()
+    hits = Searcher(conn, emb, query_prefix="").search("cat", limit=5)
+    assert len(hits) == 2
+    assert not (hits[0].start < hits[1].end and hits[1].start < hits[0].end)

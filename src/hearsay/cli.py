@@ -41,6 +41,12 @@ def cmd_rechunk(args):
         sys.exit("another hearsay index is already running")
 
 
+def cmd_serve(args):
+    from .server import main as serve
+
+    serve()
+
+
 def cmd_status(args):
     conn = db.connect(paths.db_path())
     rows = conn.execute("select status, count(*) n, coalesce(sum(duration), 0) d from sources group by status")
@@ -73,6 +79,7 @@ def main(argv=None):
 
     sub.add_parser("index", help="transcribe and index anything new or changed").set_defaults(fn=cmd_index)
     sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
+    sub.add_parser("serve", help="run the MCP server on stdio").set_defaults(fn=cmd_serve)
     sub.add_parser("status", help="show what is indexed").set_defaults(fn=cmd_status)
 
     m = sub.add_parser("models", help="model management")

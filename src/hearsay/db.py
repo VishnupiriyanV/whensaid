@@ -61,3 +61,13 @@ def forget_chunks(conn: sqlite3.Connection, source_id: int) -> None:
 def forget_source(conn: sqlite3.Connection, source_id: int) -> None:
     forget_chunks(conn, source_id)
     conn.execute("delete from segments where source_id = ?", (source_id,))
+
+
+def connect_readonly(path: Path) -> sqlite3.Connection:
+    """For the mcp server: never writes, never creates the file. The connection is
+    shared between the sdk's worker threads, so the caller has to serialise use."""
+    if not Path(path).exists():
+        raise FileNotFoundError(path)
+    conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn

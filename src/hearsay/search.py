@@ -21,6 +21,7 @@ class Hit:
     text: str
     score: float
     matched_by: dict = field(default_factory=dict)  # mode -> rank
+    similarity: float | None = None  # cosine to the query, None for keyword-only mode
 
 
 def fts_query(text: str) -> str | None:
@@ -81,22 +82,32 @@ class Searcher:
         )
         return [r[0] for r in rows]
 
-    def semantic_ids(self, query: str, n: int) -> list[int]:
+    def query_vector(self, query: str):
+        return self.embedder.encode([self.query_prefix + query])[0]
+
+    def semantic_ids(self, query: str, n: int, qv=None) -> list[int]:
         self._load_vectors()
         if len(self._ids) == 0:
             return []
-        qv = self.embedder.encode([self.query_prefix + query])[0]
+        if qv is None:
+            qv = self.query_vector(query)
         sims = self._mat @ qv  # vectors are normalised, so this is cosine similarity
         top = np.argsort(-sims)[:n]
         return [int(self._ids[i]) for i in top]
 
     def search(self, query: str, limit: int = 10, mode: str = "hybrid", pool: int = 50, k: int = 60) -> list[Hit]:
         rankings = {}
+        qv = None
+        if mode != "keyword":
+            self._load_vectors()
+            if len(self._ids):
+                qv = self.query_vector(query)
         if mode in ("hybrid", "keyword"):
             rankings["keyword"] = self.keyword_ids(query, pool)
-        if mode in ("hybrid", "semantic"):
-            rankings["semantic"] = self.semantic_ids(query, pool)
-        fused = rrf(rankings, k)[:limit]
+        if mode in ("hybrid", "semantic") and qv is not None:
+            rankings["semantic"] = self.semantic_ids(query, pool, qv)
+        # fetch extra, neighbouring chunks of one passage get merged below
+        fused = rrf(rankings, k)[: limit * 3]
         if not fused:
             return []
 
@@ -109,8 +120,15 @@ class Searcher:
                 [cid for cid, _, _ in fused],
             )
         }
-        return [
-            Hit(cid, rows[cid]["path"], rows[cid]["start"], rows[cid]["end"], rows[cid]["text"], score, ranks)
-            for cid, score, ranks in fused
-            if cid in rows
-        ]
+        pos = {int(cid): i for i, cid in enumerate(self._ids)} if qv is not None else {}
+        hits: list[Hit] = []
+        for cid, score, ranks in fused:
+            r = rows.get(cid)
+            if r is None:
+                continue
+            sim = float(self._mat[pos[cid]] @ qv) if cid in pos else None
+            # chunks overlap by a few seconds, so the same passage often matches twice
+            if any(h.path == r["path"] and h.start < r["end"] and r["start"] < h.end for h in hits):
+                continue
+            hits.append(Hit(cid, r["path"], r["start"], r["end"], r["text"], score, ranks, sim))
+        return hits[:limit]

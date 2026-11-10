@@ -37,6 +37,21 @@ def index_lock():
         f.close()
 
 
+def indexer_running() -> bool:
+    """True if some process holds the index lock. Takes a shared lock for an
+    instant, which only fails while the indexer has the exclusive one."""
+    path = home() / "index.lock"
+    if not path.exists():
+        return False
+    with open(path, "w") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(f, fcntl.LOCK_UN)
+        return False
+
+
 def find_media(root: str):
     for dirpath, dirnames, files in os.walk(root):
         dirnames[:] = [d for d in dirnames if not d.startswith(".")]
