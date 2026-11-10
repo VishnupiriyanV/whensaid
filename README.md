@@ -16,6 +16,7 @@ uv venv && uv pip install -e ".[cuda]"      # drop [cuda] if you have no NVIDIA 
 hearsay models pull                         # one-off download, ~1.6 GB (whisper, embedder, reranker)
 hearsay add ~/Videos/talks                  # register a folder
 hearsay index                               # transcribe + index anything new or changed
+hearsay index --watch                       # or keep running and pick up new files (scans every 30 s)
 hearsay status
 ```
 
@@ -27,6 +28,7 @@ claude mcp add hearsay -- /path/to/.venv/bin/hearsay serve
 
 Tools the agent gets (all read-only): `search`, `get_transcript`, `list_sources`, `index_status`.
 Indexing is only ever done by the `hearsay index` command, never by the agent.
+With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
 
 Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
 

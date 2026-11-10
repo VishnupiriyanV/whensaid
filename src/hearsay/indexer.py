@@ -60,19 +60,25 @@ def find_media(root: str):
                 yield os.path.join(dirpath, name)
 
 
-def _needs_work(row, st) -> bool:
-    if row is None or row["status"] in ("pending", "failed"):
+def _needs_work(row, st, retry_failed=True) -> bool:
+    if row is None or row["status"] == "pending":
+        return True
+    if row["status"] == "failed" and retry_failed:
         return True
     return row["size"] != st.st_size or row["mtime_ns"] != st.st_mtime_ns
 
 
-def scan(conn, root: str) -> list[str]:
-    """Register new or changed files under root, return the paths to process."""
+def scan(conn, root: str, settle: float = 0, retry_failed: bool = True) -> list[str]:
+    """Register new or changed files under root, return the paths to process.
+    settle: skip files modified in the last this-many seconds, they may still be copying."""
     todo = []
+    now = time.time()
     for path in find_media(root):
         st = os.stat(path)
+        if settle and now - st.st_mtime < settle:
+            continue
         row = conn.execute("select * from sources where path = ?", (path,)).fetchone()
-        if not _needs_work(row, st):
+        if not _needs_work(row, st, retry_failed):
             continue
         conn.execute(
             """insert into sources (path, size, mtime_ns, status) values (?, ?, ?, 'pending')
@@ -145,11 +151,11 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
     return len(ids)
 
 
-def run(conn, transcriber, embedder, log=sys.stderr) -> dict:
+def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True) -> dict:
     roots = [r["path"] for r in conn.execute("select path from roots order by path")]
     todo = []
     for root in roots:
-        todo += scan(conn, root)
+        todo += scan(conn, root, settle, retry_failed)
 
     counts = {"done": 0, "no_audio": 0, "failed": 0}
     for i, path in enumerate(todo, 1):
@@ -159,3 +165,21 @@ def run(conn, transcriber, embedder, log=sys.stderr) -> dict:
         counts[result] += 1
         print(f"    {result} in {time.time() - t0:.1f}s", file=log, flush=True)
     return counts
+
+
+def watch(conn, transcriber, embedder, log=sys.stderr, interval: float = 30, settle: float = 15,
+          rounds: int | None = None, sleep=time.sleep) -> dict:
+    """Keep indexing as files show up. A failed file is retried only once it changes, so a
+    broken one doesn't loop forever. rounds and sleep exist so tests can run it."""
+    total = {"done": 0, "no_audio": 0, "failed": 0}
+    n = 0
+    print(f"watching every {interval:.0f}s, ctrl-c to stop", file=log, flush=True)
+    while rounds is None or n < rounds:
+        # the first pass still retries earlier failures, after that only changed files
+        counts = run(conn, transcriber, embedder, log, settle=settle, retry_failed=(n == 0))
+        for k, v in counts.items():
+            total[k] += v
+        n += 1
+        if rounds is None or n < rounds:
+            sleep(interval)
+    return total

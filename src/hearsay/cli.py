@@ -18,12 +18,18 @@ def cmd_add(args):
 
 def cmd_index(args):
     from .embed import Embedder
-    from .indexer import AlreadyRunning, index_lock, run
+    from .indexer import AlreadyRunning, index_lock, run, watch
     from .transcribe import Transcriber
 
     conn = db.connect(paths.db_path())
     try:
         with index_lock():
+            if args.watch:
+                try:
+                    watch(conn, Transcriber(), Embedder(), interval=args.interval)
+                except KeyboardInterrupt:
+                    print("stopped")
+                return
             counts = run(conn, Transcriber(), Embedder())
     except AlreadyRunning:
         sys.exit("another hearsay index is already running")
@@ -119,7 +125,10 @@ def main(argv=None):
     a.add_argument("folder")
     a.set_defaults(fn=cmd_add)
 
-    sub.add_parser("index", help="transcribe and index anything new or changed").set_defaults(fn=cmd_index)
+    ix = sub.add_parser("index", help="transcribe and index anything new or changed")
+    ix.add_argument("--watch", action="store_true", help="keep running and pick up new files as they appear")
+    ix.add_argument("--interval", type=float, default=30, help="seconds between scans with --watch")
+    ix.set_defaults(fn=cmd_index)
     sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
     e = sub.add_parser("export", help="write transcripts as text files an agent can grep")
     e.add_argument("--format", choices=["txt", "srt"], default="txt")
