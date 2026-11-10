@@ -11,6 +11,7 @@ from pydantic import Field
 from . import db, paths
 from .indexer import indexer_running
 from .search import Searcher
+from .util import timecode  # noqa: F401 (also used by tests via server.timecode)
 
 INSTRUCTIONS = """\
 Search what was said in the user's local video and audio recordings.
@@ -27,11 +28,6 @@ mcp = MCPServer("hearsay", instructions=INSTRUCTIONS)
 
 _lock = threading.Lock()  # sync tools run on worker threads and share one connection
 _state: dict = {}
-
-
-def timecode(seconds: float) -> str:
-    s = int(seconds)
-    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
 
 
 def _conn():

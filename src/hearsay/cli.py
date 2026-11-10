@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from . import db, paths
 
@@ -41,6 +42,40 @@ def cmd_rechunk(args):
         sys.exit("another hearsay index is already running")
 
 
+def cmd_export(args):
+    from .export import export_all
+
+    conn = db.connect(paths.db_path())
+    out = None if args.beside else (Path(args.out).expanduser() if args.out else paths.home() / "transcripts")
+    files = export_all(conn, out, args.format)
+    where = "next to each recording" if out is None else str(out)
+    print(f"wrote {len(files)} {args.format} files, {where}")
+
+
+def cmd_search(args):
+    import json
+
+    from .embed import Embedder
+    from .search import Searcher
+    from .util import timecode
+
+    try:
+        conn = db.connect_readonly(paths.db_path())
+    except FileNotFoundError:
+        sys.exit("nothing indexed yet: hearsay add <folder>, then hearsay index")
+    hits = Searcher(conn, Embedder()).search(args.query, limit=args.limit)
+    if args.json:
+        print(json.dumps([
+            {"file": os.path.basename(h.path), "path": h.path, "start": round(h.start, 1),
+             "at": timecode(h.start), "similarity": h.similarity and round(h.similarity, 3), "text": h.text}
+            for h in hits
+        ], indent=1))
+        return
+    for h in hits:
+        sim = "  -  " if h.similarity is None else f"{h.similarity:.2f}"
+        print(f"{os.path.basename(h.path)}  {timecode(h.start)}  sim {sim}  {h.text[:200]}")
+
+
 def cmd_serve(args):
     from .server import main as serve
 
@@ -79,6 +114,18 @@ def main(argv=None):
 
     sub.add_parser("index", help="transcribe and index anything new or changed").set_defaults(fn=cmd_index)
     sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
+    e = sub.add_parser("export", help="write transcripts as text files an agent can grep")
+    e.add_argument("--format", choices=["txt", "srt"], default="txt")
+    e.add_argument("--out", help="folder to write into (default: ~/.hearsay/transcripts)")
+    e.add_argument("--beside", action="store_true", help="write next to each recording instead")
+    e.set_defaults(fn=cmd_export)
+
+    q = sub.add_parser("search", help="search from the terminal")
+    q.add_argument("query")
+    q.add_argument("-n", "--limit", type=int, default=8)
+    q.add_argument("--json", action="store_true")
+    q.set_defaults(fn=cmd_search)
+
     sub.add_parser("serve", help="run the MCP server on stdio").set_defaults(fn=cmd_serve)
     sub.add_parser("status", help="show what is indexed").set_defaults(fn=cmd_status)
 
