@@ -27,6 +27,7 @@ claude mcp add hearsay -- /path/to/.venv/bin/hearsay serve
 ```
 
 Tools the agent gets (all read-only): `search`, `get_transcript`, `list_sources`, `index_status`.
+On CPU-only machines it uses the same model in int8 (about 6x realtime on 12 cores); `HEARSAY_WHISPER_MODEL=small.en` trades accuracy for speed.
 Indexing is only ever done by the `hearsay index` command, never by the agent.
 With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
 

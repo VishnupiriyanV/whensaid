@@ -1,24 +1,27 @@
+import os
 import sys
 
 from .chunk import Segment
 from .paths import models_dir
 
-# distil-large-v3 is english only, which is what we target first
-GPU_MODEL = "distil-large-v3"
-CPU_MODEL = "small.en"
+# distil-large-v3 is english only, which is what we target first. On a 12 core cpu it ran at
+# ~6x realtime with ~4% difference from the gpu transcript, small.en was ~16x but ~17% off.
+MODEL = "distil-large-v3"
+FAST_MODEL = "small.en"  # for slow machines: HEARSAY_WHISPER_MODEL=small.en
 
 
 def pick_device() -> tuple[str, str, str]:
     """Returns (device, compute_type, model_name)."""
     from . import cudalibs
     cudalibs.preload()
+    model = os.environ.get("HEARSAY_WHISPER_MODEL", MODEL)
     try:
         import ctranslate2
         if ctranslate2.get_cuda_device_count() > 0:
-            return "cuda", "float16", GPU_MODEL
+            return "cuda", "float16", model
     except Exception:
         pass
-    return "cpu", "int8", CPU_MODEL
+    return "cpu", "int8", model
 
 
 class NoAudio(Exception):
