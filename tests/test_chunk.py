@@ -29,3 +29,20 @@ def test_windows_overlap_and_cover_everything():
 def test_no_chunk_far_over_target():
     for c in make_chunks(segs(60), target=45, overlap=6):
         assert c.end - c.start <= 45 + 6 + 5
+
+
+def test_pauses_do_not_cause_a_pile_of_overlapping_chunks():
+    # 2s of speech every 5s for 5 minutes. The old overlap code counted seconds of
+    # speech instead of elapsed time and emitted a chunk for almost every segment.
+    sparse = [Segment(i * 5.0, i * 5.0 + 2.0, f"s{i}") for i in range(60)]
+    out = make_chunks(sparse, target=45, overlap=6)
+    assert len(out) <= 10
+    for a, b in zip(out, out[1:]):
+        assert b.start - a.start >= 20
+
+
+def test_long_silence_breaks_the_window_without_overlap():
+    a = [Segment(0, 3, "intro"), Segment(3, 6, "more intro")]
+    b = [Segment(120, 123, "after the music")]
+    out = make_chunks(a + b, max_gap=8)
+    assert [(c.start, c.end) for c in out] == [(0, 6), (120, 123)]

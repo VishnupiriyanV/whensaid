@@ -49,11 +49,15 @@ def connect(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def forget_source(conn: sqlite3.Connection, source_id: int) -> None:
+def forget_chunks(conn: sqlite3.Connection, source_id: int) -> None:
     # fts rows are not tied to chunks by a foreign key, so clear them by hand
     conn.execute(
         "delete from chunks_fts where rowid in (select id from chunks where source_id = ?)",
         (source_id,),
     )
     conn.execute("delete from chunks where source_id = ?", (source_id,))
+
+
+def forget_source(conn: sqlite3.Connection, source_id: int) -> None:
+    forget_chunks(conn, source_id)
     conn.execute("delete from segments where source_id = ?", (source_id,))

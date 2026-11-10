@@ -5,8 +5,8 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-from .chunk import make_chunks
-from .db import forget_source
+from .chunk import Segment, make_chunks
+from .db import forget_chunks, forget_source
 from .paths import home
 from .transcribe import NoAudio
 
@@ -96,17 +96,38 @@ def index_file(conn, path: str, transcriber, embedder) -> str:
             "insert into segments (source_id, start, end, text) values (?, ?, ?, ?)",
             [(source_id, s.start, s.end, s.text) for s in segments],
         )
-        for c, v in zip(chunks, vecs):
-            cur = conn.execute(
-                "insert into chunks (source_id, start, end, text, embedding) values (?, ?, ?, ?, ?)",
-                (source_id, c.start, c.end, c.text, v.tobytes()),
-            )
-            conn.execute("insert into chunks_fts (rowid, text) values (?, ?)", (cur.lastrowid, c.text))
+        _insert_chunks(conn, source_id, chunks, vecs)
         conn.execute(
             "update sources set status = 'done', duration = ?, error = null, indexed_at = datetime('now') where id = ?",
             (duration, source_id),
         )
     return "done"
+
+
+def _insert_chunks(conn, source_id, chunks, vecs):
+    for c, v in zip(chunks, vecs):
+        cur = conn.execute(
+            "insert into chunks (source_id, start, end, text, embedding) values (?, ?, ?, ?, ?)",
+            (source_id, c.start, c.end, c.text, v.tobytes()),
+        )
+        conn.execute("insert into chunks_fts (rowid, text) values (?, ?)", (cur.lastrowid, c.text))
+
+
+def rechunk(conn, embedder, log=sys.stderr) -> int:
+    """Rebuild chunks and embeddings from the stored segments, no transcribing.
+    Use after changing the chunking or the embedding model."""
+    ids = [r["id"] for r in conn.execute("select id from sources where status = 'done'")]
+    for source_id in ids:
+        rows = conn.execute(
+            "select start, end, text from segments where source_id = ? order by start", (source_id,)
+        ).fetchall()
+        chunks = make_chunks([Segment(r["start"], r["end"], r["text"]) for r in rows])
+        vecs = embedder.encode([c.text for c in chunks]) if chunks else []
+        with conn:
+            forget_chunks(conn, source_id)
+            _insert_chunks(conn, source_id, chunks, vecs)
+    print(f"rechunked {len(ids)} files", file=log)
+    return len(ids)
 
 
 def run(conn, transcriber, embedder, log=sys.stderr) -> dict:

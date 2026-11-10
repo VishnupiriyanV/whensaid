@@ -29,6 +29,18 @@ def cmd_index(args):
     print(counts)
 
 
+def cmd_rechunk(args):
+    from .embed import Embedder
+    from .indexer import AlreadyRunning, index_lock, rechunk
+
+    conn = db.connect(paths.db_path())
+    try:
+        with index_lock():
+            rechunk(conn, Embedder())
+    except AlreadyRunning:
+        sys.exit("another hearsay index is already running")
+
+
 def cmd_status(args):
     conn = db.connect(paths.db_path())
     rows = conn.execute("select status, count(*) n, coalesce(sum(duration), 0) d from sources group by status")
@@ -60,6 +72,7 @@ def main(argv=None):
     a.set_defaults(fn=cmd_add)
 
     sub.add_parser("index", help="transcribe and index anything new or changed").set_defaults(fn=cmd_index)
+    sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
     sub.add_parser("status", help="show what is indexed").set_defaults(fn=cmd_status)
 
     m = sub.add_parser("models", help="model management")

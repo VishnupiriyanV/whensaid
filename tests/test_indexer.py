@@ -57,3 +57,18 @@ def test_second_indexer_is_refused(tmp_path, monkeypatch):
                 assert False, "should not get the lock twice"
         except indexer.AlreadyRunning:
             pass
+
+
+def test_rechunk_rebuilds_from_segments(tmp_path):
+    media = make_tree(tmp_path)
+    conn = db.connect(tmp_path / "t.db")
+    conn.execute("insert into roots values (?)", (str(media),))
+    log = open("/dev/null", "w")
+    indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=log)
+    conn.execute("delete from chunks")  # pretend the chunks are stale or missing
+    conn.execute("delete from chunks_fts")
+    conn.commit()
+
+    assert indexer.rechunk(conn, FakeEmbedder(), log=log) == 1
+    assert conn.execute("select count(*) from chunks").fetchone()[0] == 1
+    assert len(conn.execute("select rowid from chunks_fts where chunks_fts match 'gradient'").fetchall()) == 1

@@ -1,0 +1,183 @@
+{
+ "queries": [
+  {
+   "query": "miner's log cabin visited by Longfellow, Emerson and Holmes",
+   "kind": "exact",
+   "file": "marktwainsspeeches_002_twain_64kb.mp3",
+   "start": 87,
+   "end": 213
+  },
+  {
+   "query": "a speech that fell flat and nobody in the room laughed",
+   "kind": "para",
+   "file": "marktwainsspeeches_002_twain_64kb.mp3",
+   "start": 970,
+   "end": 1167
+  },
+  {
+   "query": "Howells scolding Twain over the damage done to Bishop",
+   "kind": "exact",
+   "file": "marktwainsspeeches_002_twain_64kb.mp3",
+   "start": 1334,
+   "end": 1449
+  },
+  {
+   "query": "celebration of a poet's seventieth birthday dinner",
+   "kind": "para",
+   "file": "marktwainsspeeches_002_twain_64kb.mp3",
+   "start": 858,
+   "end": 1007
+  },
+  {
+   "query": "writing a letter years later about an embarrassing speech",
+   "kind": "para",
+   "file": "marktwainsspeeches_002_twain_64kb.mp3",
+   "start": 630,
+   "end": 700
+  },
+  {
+   "query": "the famous authors playing cards and cheating",
+   "kind": "para",
+   "file": "marktwainsspeeches_002_twain_64kb.mp3",
+   "start": 370,
+   "end": 457
+  },
+  {
+   "query": "memory keeps useless facts like a bird collecting junk",
+   "kind": "para",
+   "file": "marktwainsspeeches_060_twain_64kb.mp3",
+   "start": 159,
+   "end": 285
+  },
+  {
+   "query": "a boy steals a watermelon and takes it back",
+   "kind": "para",
+   "file": "marktwainsspeeches_060_twain_64kb.mp3",
+   "start": 536,
+   "end": 700
+  },
+  {
+   "query": "sleeping in a room with a dead body and counting to a hundred",
+   "kind": "para",
+   "file": "marktwainsspeeches_060_twain_64kb.mp3",
+   "start": 794,
+   "end": 1007
+  },
+  {
+   "query": "his mother forgot everything but remembered he was the best boy",
+   "kind": "exact",
+   "file": "marktwainsspeeches_060_twain_64kb.mp3",
+   "start": 369,
+   "end": 492
+  },
+  {
+   "query": "wearing tight boots at the theatre with a girl",
+   "kind": "para",
+   "file": "marktwainsspeeches_060_twain_64kb.mp3",
+   "start": 1051,
+   "end": 1166
+  },
+  {
+   "query": "the butler never asked visitors their business",
+   "kind": "exact",
+   "file": "marktwainsspeeches_060_twain_64kb.mp3",
+   "start": 1166,
+   "end": 1416
+  },
+  {
+   "query": "chewing tobacco used to disinfect a wound",
+   "kind": "exact",
+   "file": "Doctorin1946_512kb.mp4",
+   "start": 437,
+   "end": 535
+  },
+  {
+   "query": "doctor teaches factory workers first aid",
+   "kind": "para",
+   "file": "Doctorin1946_512kb.mp4",
+   "start": 837,
+   "end": 941
+  },
+  {
+   "query": "worker threatens to sue over a back injury diagnosis",
+   "kind": "para",
+   "file": "Doctorin1946_512kb.mp4",
+   "start": 933,
+   "end": 1015
+  },
+  {
+   "query": "preventing accidents and sickness in factories and mills",
+   "kind": "para",
+   "file": "Doctorin1946_512kb.mp4",
+   "start": 1048,
+   "end": 1126
+  },
+  {
+   "query": "banquet to honor the famous young surgeon",
+   "kind": "para",
+   "file": "Doctorin1946_512kb.mp4",
+   "start": 225,
+   "end": 310
+  },
+  {
+   "query": "visiting the plant to dress the men's wounds",
+   "kind": "para",
+   "file": "Doctorin1946_512kb.mp4",
+   "start": 667,
+   "end": 747
+  },
+  {
+   "query": "how compost is made from manure and limestone",
+   "kind": "exact",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 113,
+   "end": 224
+  },
+  {
+   "query": "cutting and drying alfalfa",
+   "kind": "para",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 252,
+   "end": 333
+  },
+  {
+   "query": "machine that fills and caps vitamin capsules",
+   "kind": "para",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 552,
+   "end": 636
+  },
+  {
+   "query": "numbering barrels and batch records for quality control",
+   "kind": "para",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 373,
+   "end": 414
+  },
+  {
+   "query": "who developed the food supplement",
+   "kind": "para",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 450,
+   "end": 540
+  },
+  {
+   "query": "pressing mineral powder into tablets",
+   "kind": "para",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 732,
+   "end": 774
+  },
+  {
+   "query": "research and control laboratories in Buena Park",
+   "kind": "exact",
+   "file": "FromtheG1954_512kb.mp4",
+   "start": 973,
+   "end": 1058
+  }
+ ],
+ "negative": [
+  "how to install Linux kernel modules",
+  "football world cup final score"
+ ]
+}
