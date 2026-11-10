@@ -61,11 +61,40 @@ class Transcriber:
         if self._pipe is None:
             self._load()
 
+        # The batched pipeline returns one big segment per vad block unless we ask
+        # for timestamps, and even then a block can glue a stray noise at 0:02 to
+        # speech at 2:26. Word times are the only reliable ones, so use those.
         segs, info = self._pipe.transcribe(
             audio,
             batch_size=8 if self.device == "cuda" else 4,
             vad_filter=True,
             language="en",
+            without_timestamps=False,
+            word_timestamps=True,
         )
-        out = [Segment(s.start, s.end, s.text.strip()) for s in segs if s.text.strip()]
+        out = []
+        for s in segs:
+            out += split_on_gaps(s.words or [], fallback=s)
         return out, len(audio) / 16000
+
+
+def split_on_gaps(words, fallback=None, max_gap: float = 2.5) -> list[Segment]:
+    """Turn a segment's words into Segments, cutting wherever the speaker went
+    quiet for more than max_gap seconds."""
+    if not words:
+        if fallback is not None and fallback.text.strip():
+            return [Segment(fallback.start, fallback.end, fallback.text.strip())]
+        return []
+
+    out, cur = [], [words[0]]
+    for w in words[1:]:
+        if w.start - cur[-1].end > max_gap:
+            out.append(cur)
+            cur = []
+        cur.append(w)
+    out.append(cur)
+
+    return [
+        Segment(float(g[0].start), float(g[-1].end), "".join(w.word for w in g).strip())
+        for g in out
+    ]
