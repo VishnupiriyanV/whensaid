@@ -17,6 +17,7 @@ hearsay models pull                         # one-off download, ~1.6 GB (whisper
 hearsay add ~/Videos/talks                  # register a folder
 hearsay index                               # transcribe + index anything new or changed
 hearsay index --watch                       # or keep running and pick up new files (scans every 30 s)
+hearsay index --subtitles                   # use a .srt/.vtt next to a recording instead of transcribing it
 hearsay remove ~/Videos/old                 # stop watching a folder and drop it from the index
 hearsay status
 ```

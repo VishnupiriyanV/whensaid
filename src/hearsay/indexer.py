@@ -5,6 +5,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
+from . import subtitles
 from .chunk import Segment, make_chunks
 from .db import forget_chunks, forget_source, get_meta, set_meta
 from .paths import home
@@ -163,11 +164,31 @@ def remove_root(conn, folder: str) -> int:
     return len(ids)
 
 
-def index_file(conn, path: str, transcriber, embedder) -> str:
+def _from_subtitles(path: str):
+    """(segments, duration) from a subtitle file next to the recording, or None if there is
+    none or it holds no text. The duration is the media's when it can be read quickly."""
+    side = subtitles.find_sidecar(path)
+    segs = subtitles.read(side) if side else []
+    if not segs:
+        return None
+    duration = segs[-1].end
+    try:
+        import av
+
+        with av.open(path) as c:
+            if c.duration:
+                duration = max(duration, c.duration / 1_000_000)
+    except Exception:
+        pass
+    return segs, duration
+
+
+def index_file(conn, path: str, transcriber, embedder, use_subtitles: bool = False) -> str:
     row = conn.execute("select id from sources where path = ?", (path,)).fetchone()
     source_id = row["id"]
     try:
-        segments, duration = transcriber.transcribe(path)
+        found = _from_subtitles(path) if use_subtitles else None
+        segments, duration = found if found else transcriber.transcribe(path)
     except NoAudio:
         conn.execute("update sources set status = 'no_audio' where id = ?", (source_id,))
         conn.commit()
@@ -227,7 +248,8 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
     return len(ids)
 
 
-def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True) -> dict:
+def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True,
+        use_subtitles: bool = False) -> dict:
     claim_embed_model(conn, embedder)
     prune(conn, log)
     roots = [r["path"] for r in conn.execute("select path from roots order by path")]
@@ -239,14 +261,14 @@ def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_fa
     for i, path in enumerate(todo, 1):
         t0 = time.time()
         print(f"[{i}/{len(todo)}] {path}", file=log, flush=True)
-        result = index_file(conn, path, transcriber, embedder)
+        result = index_file(conn, path, transcriber, embedder, use_subtitles)
         counts[result] += 1
         print(f"    {result} in {time.time() - t0:.1f}s", file=log, flush=True)
     return counts
 
 
 def watch(conn, transcriber, embedder, log=sys.stderr, interval: float = 30, settle: float = 15,
-          rounds: int | None = None, sleep=time.sleep) -> dict:
+          rounds: int | None = None, sleep=time.sleep, use_subtitles: bool = False) -> dict:
     """Keep indexing as files show up. A failed file is retried only once it changes, so a
     broken one doesn't loop forever. rounds and sleep exist so tests can run it."""
     total = {"done": 0, "no_audio": 0, "failed": 0}
@@ -254,7 +276,8 @@ def watch(conn, transcriber, embedder, log=sys.stderr, interval: float = 30, set
     print(f"watching every {interval:.0f}s, ctrl-c to stop", file=log, flush=True)
     while rounds is None or n < rounds:
         # the first pass still retries earlier failures, after that only changed files
-        counts = run(conn, transcriber, embedder, log, settle=settle, retry_failed=(n == 0))
+        counts = run(conn, transcriber, embedder, log, settle=settle, retry_failed=(n == 0),
+                     use_subtitles=use_subtitles)
         for k, v in counts.items():
             total[k] += v
         n += 1

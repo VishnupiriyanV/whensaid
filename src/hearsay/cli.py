@@ -26,11 +26,11 @@ def cmd_index(args):
         with index_lock():
             if args.watch:
                 try:
-                    watch(conn, Transcriber(), Embedder(), interval=args.interval)
+                    watch(conn, Transcriber(), Embedder(), interval=args.interval, use_subtitles=args.subtitles)
                 except KeyboardInterrupt:
                     print("stopped")
                 return
-            counts = run(conn, Transcriber(), Embedder())
+            counts = run(conn, Transcriber(), Embedder(), use_subtitles=args.subtitles)
     except AlreadyRunning:
         sys.exit("another hearsay index is already running")
     except ModelChanged as e:
@@ -153,6 +153,8 @@ def main(argv=None):
     ix = sub.add_parser("index", help="transcribe and index anything new or changed")
     ix.add_argument("--watch", action="store_true", help="keep running and pick up new files as they appear")
     ix.add_argument("--interval", type=float, default=30, help="seconds between scans with --watch")
+    ix.add_argument("--subtitles", action="store_true",
+                    help="use a .srt/.vtt next to a recording instead of transcribing it (English assumed)")
     ix.set_defaults(fn=cmd_index)
     sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
     e = sub.add_parser("export", help="write transcripts as text files an agent can grep")
