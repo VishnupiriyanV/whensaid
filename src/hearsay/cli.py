@@ -18,6 +18,7 @@ def cmd_add(args):
 
 def cmd_index(args):
     from .embed import Embedder
+    from .fetch import YtDlp
     from .indexer import AlreadyRunning, ModelChanged, index_lock, run, watch
     from .transcribe import Transcriber
 
@@ -26,11 +27,12 @@ def cmd_index(args):
         with index_lock():
             if args.watch:
                 try:
-                    watch(conn, Transcriber(), Embedder(), interval=args.interval, use_subtitles=args.subtitles)
+                    watch(conn, Transcriber(), Embedder(), interval=args.interval, use_subtitles=args.subtitles,
+                          fetcher=YtDlp())
                 except KeyboardInterrupt:
                     print("stopped")
                 return
-            counts = run(conn, Transcriber(), Embedder(), use_subtitles=args.subtitles)
+            counts = run(conn, Transcriber(), Embedder(), use_subtitles=args.subtitles, fetcher=YtDlp())
     except AlreadyRunning:
         sys.exit("another hearsay index is already running")
     except ModelChanged as e:
@@ -38,13 +40,26 @@ def cmd_index(args):
     print(counts)
 
 
+def cmd_add_url(args):
+    from .fetch import FetchError, YtDlp
+    from .urls import add_url
+
+    conn = db.connect(paths.db_path())
+    try:
+        r = add_url(conn, YtDlp(), args.url, limit=args.limit, no_playlist=args.no_playlist)
+    except FetchError as e:
+        sys.exit(f"could not read {args.url}: {e}")
+    print(f"run `hearsay index` to fetch {r['new']} new videos" if r["new"] else "nothing new to fetch")
+
+
 def cmd_remove(args):
     from .indexer import AlreadyRunning, index_lock, remove_root
+    from .urls import remove as remove_url
 
     conn = db.connect(paths.db_path())
     try:
         with index_lock():
-            n = remove_root(conn, args.folder)
+            n = remove_url(conn, args.folder) if args.folder.startswith(("http://", "https://")) else remove_root(conn, args.folder)
     except AlreadyRunning:
         sys.exit("another hearsay index is already running")
     print(f"removed {n} files from the index (the recordings themselves are untouched)")
@@ -80,7 +95,7 @@ def cmd_search(args):
     from .embed import Embedder
     from .rerank import load_reranker, min_relevance, strength
     from .search import Searcher
-    from .util import timecode
+    from .util import deep_link, timecode
 
     try:
         conn = db.connect_readonly(paths.db_path())
@@ -92,7 +107,8 @@ def cmd_search(args):
         sys.exit(str(e))
     if args.json:
         print(json.dumps([
-            {"file": os.path.basename(h.path), "path": h.path, "start": round(h.start, 1),
+            {"file": h.title or os.path.basename(h.path), "path": h.path, "url": h.url, "link": deep_link(h.url, h.start),
+             "start": round(h.start, 1),
              "at": timecode(h.start), "similarity": h.similarity and round(h.similarity, 3),
              "relevance": h.relevance and round(h.relevance, 1), "match": strength(h.relevance), "text": h.text}
             for h in hits
@@ -104,7 +120,8 @@ def cmd_search(args):
         print("only weak matches, the recordings may not cover this:")
     for h in hits:
         mark = {"weak": "weak  ", "strong": "      "}.get(strength(h.relevance), "      ")
-        print(f"{mark}{os.path.basename(h.path)}  {timecode(h.start)}  {h.text[:200]}")
+        where = deep_link(h.url, h.start) or timecode(h.start)
+        print(f"{mark}{h.title or os.path.basename(h.path)}  {where}  {h.text[:200]}")
 
 
 def cmd_serve(args):
@@ -147,8 +164,14 @@ def main(argv=None):
     a.add_argument("folder")
     a.set_defaults(fn=cmd_add)
 
-    rm = sub.add_parser("remove", help="stop watching a folder and drop its files from the index")
-    rm.add_argument("folder")
+    au = sub.add_parser("add-url", help="add a video, playlist or channel from the web (needs yt-dlp)")
+    au.add_argument("url")
+    au.add_argument("--limit", type=int, default=200, help="most videos to take from a playlist or channel")
+    au.add_argument("--no-playlist", action="store_true", help="for a video url that also names a playlist: just the video")
+    au.set_defaults(fn=cmd_add_url)
+
+    rm = sub.add_parser("remove", help="stop watching a folder, playlist or video and drop it from the index")
+    rm.add_argument("folder", metavar="folder-or-url")
     rm.set_defaults(fn=cmd_remove)
     ix = sub.add_parser("index", help="transcribe and index anything new or changed")
     ix.add_argument("--watch", action="store_true", help="keep running and pick up new files as they appear")

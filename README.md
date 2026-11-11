@@ -18,7 +18,8 @@ hearsay add ~/Videos/talks                  # register a folder
 hearsay index                               # transcribe + index anything new or changed
 hearsay index --watch                       # or keep running and pick up new files (scans every 30 s)
 hearsay index --subtitles                   # use a .srt/.vtt next to a recording instead of transcribing it
-hearsay remove ~/Videos/old                 # stop watching a folder and drop it from the index
+hearsay add-url https://www.youtube.com/playlist?list=...   # a video, playlist or channel (pip install 'hearsay-mcp[url]')
+hearsay remove ~/Videos/old                 # stop watching a folder, playlist or video and drop it from the index
 hearsay status
 ```
 
@@ -32,6 +33,8 @@ Tools the agent gets (all read-only): `search`, `get_transcript`, `list_sources`
 On CPU-only machines it uses the same model in int8 (about 6x realtime on 12 cores); `HEARSAY_WHISPER_MODEL=small.en` trades accuracy for speed.
 Indexing is only ever done by the `hearsay index` command, never by the agent.
 `hearsay index` also drops files that were deleted or moved (unless their folder is missing or holds no media at all, which looks like an unplugged drive). With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
+
+Web videos use their captions when there are any (seconds, no GPU) and are transcribed from the audio otherwise. Search results for them carry the title and a `link` that opens the video at that moment. Playlists and channels are checked for new videos at most once an hour. Use this for videos you are allowed to download; the site's terms still apply.
 
 Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
 

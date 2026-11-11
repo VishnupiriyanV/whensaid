@@ -5,7 +5,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import subtitles
+from . import subtitles, urls
 from .chunk import Segment, make_chunks
 from .db import forget_chunks, forget_source, get_meta, set_meta
 from .paths import home
@@ -183,12 +183,20 @@ def _from_subtitles(path: str):
     return segs, duration
 
 
-def index_file(conn, path: str, transcriber, embedder, use_subtitles: bool = False) -> str:
-    row = conn.execute("select id from sources where path = ?", (path,)).fetchone()
+def index_file(conn, path: str, transcriber, embedder, use_subtitles: bool = False, fetcher=None) -> str:
+    row = conn.execute("select id, kind, url from sources where path = ?", (path,)).fetchone()
     source_id = row["id"]
+    how = "whisper"
     try:
-        found = _from_subtitles(path) if use_subtitles else None
-        segments, duration = found if found else transcriber.transcribe(path)
+        if row["kind"] == "url":
+            if fetcher is None:
+                raise RuntimeError("no fetcher available for a web video")
+            segments, duration, how = fetcher.acquire(row["url"], transcriber)
+        else:
+            found = _from_subtitles(path) if use_subtitles else None
+            if found:
+                how = "subtitle-file"
+            segments, duration = found if found else transcriber.transcribe(path)
     except NoAudio:
         conn.execute("update sources set status = 'no_audio' where id = ?", (source_id,))
         conn.commit()
@@ -212,8 +220,8 @@ def index_file(conn, path: str, transcriber, embedder, use_subtitles: bool = Fal
         )
         _insert_chunks(conn, source_id, chunks, vecs)
         conn.execute(
-            "update sources set status = 'done', duration = ?, error = null, indexed_at = datetime('now') where id = ?",
-            (duration, source_id),
+            "update sources set status = 'done', duration = ?, error = null, captions = ?, indexed_at = datetime('now') where id = ?",
+            (duration, how, source_id),
         )
     return "done"
 
@@ -249,26 +257,29 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
 
 
 def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True,
-        use_subtitles: bool = False) -> dict:
+        use_subtitles: bool = False, fetcher=None) -> dict:
     claim_embed_model(conn, embedder)
     prune(conn, log)
     roots = [r["path"] for r in conn.execute("select path from roots order by path")]
     todo = []
     for root in roots:
         todo += scan(conn, root, settle, retry_failed)
+    if fetcher is not None:
+        urls.refresh_feeds(conn, fetcher, log)
+        todo += urls.pending(conn, retry_failed)
 
     counts = {"done": 0, "no_audio": 0, "failed": 0}
     for i, path in enumerate(todo, 1):
         t0 = time.time()
         print(f"[{i}/{len(todo)}] {path}", file=log, flush=True)
-        result = index_file(conn, path, transcriber, embedder, use_subtitles)
+        result = index_file(conn, path, transcriber, embedder, use_subtitles, fetcher)
         counts[result] += 1
         print(f"    {result} in {time.time() - t0:.1f}s", file=log, flush=True)
     return counts
 
 
 def watch(conn, transcriber, embedder, log=sys.stderr, interval: float = 30, settle: float = 15,
-          rounds: int | None = None, sleep=time.sleep, use_subtitles: bool = False) -> dict:
+          rounds: int | None = None, sleep=time.sleep, use_subtitles: bool = False, fetcher=None) -> dict:
     """Keep indexing as files show up. A failed file is retried only once it changes, so a
     broken one doesn't loop forever. rounds and sleep exist so tests can run it."""
     total = {"done": 0, "no_audio": 0, "failed": 0}
@@ -277,7 +288,7 @@ def watch(conn, transcriber, embedder, log=sys.stderr, interval: float = 30, set
     while rounds is None or n < rounds:
         # the first pass still retries earlier failures, after that only changed files
         counts = run(conn, transcriber, embedder, log, settle=settle, retry_failed=(n == 0),
-                     use_subtitles=use_subtitles)
+                     use_subtitles=use_subtitles, fetcher=fetcher)
         for k, v in counts.items():
             total[k] += v
         n += 1

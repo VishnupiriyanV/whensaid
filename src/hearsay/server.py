@@ -12,13 +12,14 @@ from . import db, paths
 from .indexer import indexer_running
 from .rerank import strength
 from .search import Searcher
-from .util import timecode  # noqa: F401 (also used by tests via server.timecode)
+from .util import deep_link, timecode  # noqa: F401 (timecode is also used by tests via server.timecode)
 
 INSTRUCTIONS = """\
 Search what was said in the user's local video and audio recordings.
 Start with `search`: it returns the matching passage, the file, and where in the file it was
-said (seconds and h:mm:ss). Use `get_transcript` to read more around a hit. All times are in
-seconds from the start of the file. Passages the reranker judges unrelated are left out, so an
+said (seconds and h:mm:ss). Use `get_transcript` to read more around a hit, passing the hit's
+`path`. All times are in seconds from the start of the file. For videos from the web a hit also
+has `title`, `url` and `link`, a url that opens the video at that moment: give it to the user. Passages the reranker judges unrelated are left out, so an
 empty result (it comes with a note) means the recordings most likely don't cover the topic: say
 so rather than guessing. Each hit has `match`: "strong" or "weak". A weak hit is often off-topic,
 so check its text before using it; when even the best hit is weak the result says so in `note`.
@@ -52,9 +53,21 @@ def _searcher() -> Searcher:
     return _state["searcher"]
 
 
+def _has_web_cols(conn) -> bool:
+    if "web_cols" not in _state:
+        _state["web_cols"] = "url" in {r[1] for r in conn.execute("pragma table_info(sources)")}
+    return _state["web_cols"]
+
+
+def _col(row, name):
+    return row[name] if name in row.keys() else None  # old indexes have no web columns
+
+
 def _resolve_source(conn, file: str):
-    """Accepts a full path or a file name. Only files that are in the index can be read."""
+    """Accepts a full path, a web video's key or url, or a file name. Only what is in the index can be read."""
     rows = conn.execute("select * from sources where path = ?", (file,)).fetchall()
+    if not rows and _has_web_cols(conn):
+        rows = conn.execute("select * from sources where url = ?", (file,)).fetchall()
     if not rows:
         # compared in python: a LIKE here would treat _ and % in file names as wildcards
         tail = os.sep + file.lstrip(os.sep)
@@ -87,11 +100,14 @@ def search(
         "query": query,
         "results": [
             {
-                "file": os.path.basename(h.path),
+                "file": h.title or os.path.basename(h.path),
                 "path": h.path,
                 "start": round(h.start, 1),
                 "end": round(h.end, 1),
                 "at": timecode(h.start),
+                "title": h.title,
+                "url": h.url,
+                "link": deep_link(h.url, h.start),
                 "text": h.text,
                 "similarity": None if h.similarity is None else round(h.similarity, 3),
                 "relevance": None if h.relevance is None else round(h.relevance, 1),
@@ -128,6 +144,8 @@ def get_transcript(
     truncated = len(rows) > max_segments
     return {
         "path": src["path"],
+        "title": _col(src, "title"),
+        "url": _col(src, "url"),
         "duration": src["duration"],
         "truncated": truncated,
         "segments": [
@@ -143,13 +161,14 @@ def list_sources(limit: Annotated[int, Field(ge=1, le=500)] = 100) -> dict:
     with _lock:
         conn = _conn()
         rows = conn.execute(
-            "select path, duration, status, indexed_at from sources order by path limit ?", (limit,)
+            "select * from sources order by path limit ?", (limit,)
         ).fetchall()
         total = conn.execute("select count(*) from sources").fetchone()[0]
     return {
         "total": total,
         "sources": [
-            {"path": r["path"], "duration": r["duration"], "status": r["status"], "indexed_at": r["indexed_at"]}
+            {"path": r["path"], "title": _col(r, "title"), "url": _col(r, "url"), "captions": _col(r, "captions"),
+             "duration": r["duration"], "status": r["status"], "indexed_at": r["indexed_at"]}
             for r in rows
         ],
     }

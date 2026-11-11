@@ -25,6 +25,8 @@ class Hit:
     matched_by: dict = field(default_factory=dict)  # mode -> rank
     similarity: float | None = None  # cosine to the query, None for keyword-only mode
     relevance: float | None = None  # cross-encoder score, only set when a reranker ran
+    url: str | None = None  # for web videos
+    title: str | None = None
 
 
 def fts_query(text: str) -> str | None:
@@ -57,6 +59,7 @@ class Searcher:
         self.reranker = reranker
         self.rerank_depth = rerank_depth
         self.min_relevance = min_relevance  # drop hits the reranker scores below this
+        self._web_cols = None
         self.query_prefix = query_prefix
         self._key = None
         self._ids = np.zeros(0, dtype=np.int64)
@@ -139,10 +142,13 @@ class Searcher:
             return []
 
         marks = ",".join("?" * len(fused))
+        if self._web_cols is None:  # an index made before web videos existed, opened read-only, has no such columns
+            self._web_cols = "url" in {r[1] for r in self.conn.execute("pragma table_info(sources)")}
+        extra = "s.url, s.title" if self._web_cols else "null as url, null as title"
         rows = {
             r["id"]: r
             for r in self.conn.execute(
-                f"select c.id, c.start, c.end, c.text, s.path from chunks c "
+                f"select c.id, c.start, c.end, c.text, s.path, {extra} from chunks c "
                 f"join sources s on s.id = c.source_id where c.id in ({marks})",
                 [cid for cid, _, _ in fused],
             )
@@ -160,5 +166,5 @@ class Searcher:
             # chunks overlap by a few seconds, so the same passage often matches twice
             if any(h.path == r["path"] and h.start < r["end"] and r["start"] < h.end for h in hits):
                 continue
-            hits.append(Hit(cid, r["path"], r["start"], r["end"], r["text"], score, ranks, sim, relevance.get(cid)))
+            hits.append(Hit(cid, r["path"], r["start"], r["end"], r["text"], score, ranks, sim, relevance.get(cid), r["url"], r["title"]))
         return hits[:limit]

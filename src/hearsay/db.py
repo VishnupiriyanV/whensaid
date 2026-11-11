@@ -36,6 +36,14 @@ create table if not exists chunks (
 );
 create index if not exists chunks_source on chunks(source_id, start);
 
+create table if not exists feeds (
+    url text primary key,         -- a playlist or channel, re-listed now and then for new videos
+    kind text,
+    title text,
+    limit_n integer,
+    checked_at real
+);
+
 create table if not exists meta (
     key text primary key,
     value text
@@ -45,12 +53,30 @@ create virtual table if not exists chunks_fts using fts5(text, tokenize='porter 
 """
 
 
+# added after the first release, so existing indexes get them through alter table
+SOURCE_COLUMNS = {
+    "kind": "text not null default 'file'",  # file or url; a url source's path is a stable key like youtube:ID
+    "url": "text",
+    "title": "text",
+    "captions": "text",                      # manual, auto, whisper or subtitle-file
+    "feed_url": "text",
+}
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    have = {r[1] for r in conn.execute("pragma table_info(sources)")}
+    for col, decl in SOURCE_COLUMNS.items():
+        if col not in have:
+            conn.execute(f"alter table sources add column {col} {decl}")
+
+
 def connect(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("pragma journal_mode = wal")
     conn.execute("pragma foreign_keys = on")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
 
 

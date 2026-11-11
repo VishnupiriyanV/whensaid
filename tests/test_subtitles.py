@@ -108,3 +108,22 @@ def test_index_uses_subtitles_only_when_asked_and_present(tmp_path):
     conn2.execute("insert into roots values (?)", (str(media),))
     indexer.run(conn2, Fake(), Emb(), log=log)
     assert conn2.execute("select count(*) from segments where text = 'from whisper'").fetchone()[0] == 2
+
+
+def test_rolling_auto_captions_from_youtube():
+    # structure copied from a real auto-caption file (own text): whitespace-only lines inside
+    # cues, a blank first line, every cue repeating the previous line, 10 ms transition cues
+    from pathlib import Path
+
+    segs = subtitles.parse((Path(__file__).parent / "fixtures" / "autocaptions.vtt").read_text())
+    assert [(s.start, s.end, s.text) for s in segs] == [
+        (0.8, 5.49, "Welcome to the tour of the harbor"),
+        (5.49, 18.98, "First we visit the lighthouse"),
+        (42.44, 46.48, "the keeper lives alone here"),
+        (46.48, 50.4, "and tends the lamp"),
+    ]
+
+
+def test_srt_with_whitespace_only_separator_lines():
+    srt = "1\n00:00:01,000 --> 00:00:02,000\nfirst\n \n2\n00:00:03,000 --> 00:00:04,000\nsecond\n  \n3\n00:00:05,000 --> 00:00:06,000\nthird"
+    assert [s.text for s in subtitles.parse(srt)] == ["first", "second", "third"]
