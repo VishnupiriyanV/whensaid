@@ -25,15 +25,21 @@ def target_path(media_path: str, out_dir: Path | None, fmt: str) -> Path:
     return out_dir / (media_path.lstrip("/") + "." + fmt)
 
 
-def export_all(conn, out_dir: Path | None, fmt: str = "txt") -> list[Path]:
+def export_all(conn, out_dir: Path | None, fmt: str = "txt", overwrite: bool = False) -> tuple[list[Path], list[Path]]:
+    """Returns (written, skipped). Next to the recordings (out_dir None) an existing file may
+    be someone's real subtitles, so it is left alone unless overwrite is set."""
     render = RENDERERS[fmt]
-    written = []
+    written, skipped = [], []
     for src in conn.execute("select id, path from sources where status = 'done' order by path").fetchall():
         segs = conn.execute(
             "select start, end, text from segments where source_id = ? order by start", (src["id"],)
         ).fetchall()
         dest = target_path(src["path"], out_dir, fmt)
+        text = render(segs)
+        if out_dir is None and dest.exists() and not overwrite and dest.read_text(encoding="utf-8", errors="replace") != text:
+            skipped.append(dest)
+            continue
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(render(segs), encoding="utf-8")
+        dest.write_text(text, encoding="utf-8")
         written.append(dest)
-    return written
+    return written, skipped

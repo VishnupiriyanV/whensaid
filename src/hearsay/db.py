@@ -36,6 +36,11 @@ create table if not exists chunks (
 );
 create index if not exists chunks_source on chunks(source_id, start);
 
+create table if not exists meta (
+    key text primary key,
+    value text
+);
+
 create virtual table if not exists chunks_fts using fts5(text, tokenize='porter unicode61');
 """
 
@@ -47,6 +52,21 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.execute("pragma foreign_keys = on")
     conn.executescript(SCHEMA)
     return conn
+
+
+def get_meta(conn: sqlite3.Connection, key: str) -> str | None:
+    try:
+        row = conn.execute("select value from meta where key = ?", (key,)).fetchone()
+    except sqlite3.OperationalError:  # index from before the meta table, opened read-only
+        return None
+    return row[0] if row else None
+
+
+def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        "insert into meta (key, value) values (?, ?) on conflict(key) do update set value = excluded.value",
+        (key, value),
+    )
 
 
 def forget_chunks(conn: sqlite3.Connection, source_id: int) -> None:

@@ -1,0 +1,262 @@
+{
+ "queries": [
+  {
+   "query": "benjamin was a prodigious baby",
+   "kind": "exact",
+   "file": "12yearsaslave_1303_librivox__twelveyearsaslave_22_northup_64kb.mp3",
+   "start": 315,
+   "end": 375
+  },
+  {
+   "query": "a Louisiana official issues a freed man a written travel pass describing his height, age and hair",
+   "kind": "para",
+   "file": "12yearsaslave_1303_librivox__twelveyearsaslave_22_northup_64kb.mp3",
+   "start": 65,
+   "end": 135
+  },
+  {
+   "query": "after returning north, he meets his grown daughter, now married, who named her little boy after him",
+   "kind": "para",
+   "file": "12yearsaslave_1303_librivox__twelveyearsaslave_22_northup_64kb.mp3",
+   "start": 890,
+   "end": 960
+  },
+  {
+   "query": "the artful dodger is now a peer",
+   "kind": "exact",
+   "file": "anticipations_1206_librivox__anticipations_10_wells_64kb.mp3",
+   "start": 270,
+   "end": 330
+  },
+  {
+   "query": "author argues elected governments need a foreign enemy to scare voters, pushing nations toward war",
+   "kind": "para",
+   "file": "anticipations_1206_librivox__anticipations_10_wells_64kb.mp3",
+   "start": 15,
+   "end": 95
+  },
+  {
+   "query": "a new class of scientifically trained men will take control during a war and use their guns to stop the fighting",
+   "kind": "para",
+   "file": "anticipations_1206_librivox__anticipations_10_wells_64kb.mp3",
+   "start": 650,
+   "end": 735
+  },
+  {
+   "query": "drunk with bloodlust",
+   "kind": "exact",
+   "file": "confessions_augustine_0911_librivox__confessions_06_08-16_augustine_64kb.mp3",
+   "start": 160,
+   "end": 215
+  },
+  {
+   "query": "young student wrongly seized as a thief in the market after a real burglar abandons his hatchet; a slave boy clears him",
+   "kind": "para",
+   "file": "confessions_augustine_0911_librivox__confessions_06_08-16_augustine_64kb.mp3",
+   "start": 255,
+   "end": 345
+  },
+  {
+   "query": "group of friends plan to pool all their money into one household but the scheme falls apart over their wives",
+   "kind": "para",
+   "file": "confessions_augustine_0911_librivox__confessions_06_08-16_augustine_64kb.mp3",
+   "start": 1355,
+   "end": 1440
+  },
+  {
+   "query": "a fleet-footed boy",
+   "kind": "exact",
+   "file": "lifeofantony_1308_librivox__lifeofantony_03_64kb.mp3",
+   "start": 150,
+   "end": 210
+  },
+  {
+   "query": "a hermit recalls the devil admitting that monks everywhere have destroyed his power",
+   "kind": "para",
+   "file": "lifeofantony_1308_librivox__lifeofantony_03_64kb.mp3",
+   "start": 995,
+   "end": 1065
+  },
+  {
+   "query": "monk fasting is tempted by a demon disguised as a brother offering bread, and later fake gold in the desert",
+   "kind": "para",
+   "file": "lifeofantony_1308_librivox__lifeofantony_03_64kb.mp3",
+   "start": 895,
+   "end": 960
+  },
+  {
+   "query": "people are like onions",
+   "kind": "exact",
+   "file": "OTRR_Casey_Crime_Photographer_Singles__Casey47-07-31196BrightNewStar.mp3",
+   "start": 1130,
+   "end": 1200
+  },
+  {
+   "query": "theatre producer exposed for selling far more than 100 percent of a play's backing and killing his lead actress for insurance",
+   "kind": "para",
+   "file": "OTRR_Casey_Crime_Photographer_Singles__Casey47-07-31196BrightNewStar.mp3",
+   "start": 1265,
+   "end": 1350
+  },
+  {
+   "query": "young actress coldly rejects a nightclub owner in front of reporters and has him thrown out",
+   "kind": "para",
+   "file": "OTRR_Casey_Crime_Photographer_Singles__Casey47-07-31196BrightNewStar.mp3",
+   "start": 445,
+   "end": 510
+  },
+  {
+   "query": "home run orlando",
+   "kind": "exact",
+   "file": "OTRR_Mr_District_Attorney_Singles__Mr_District_Attorney_39-06-16_055_The_Last_Mile.mp3",
+   "start": 495,
+   "end": 560
+  },
+  {
+   "query": "gangster offers to confess to the prosecutor because he thinks his new lawyer is losing the trial",
+   "kind": "para",
+   "file": "OTRR_Mr_District_Attorney_Singles__Mr_District_Attorney_39-06-16_055_The_Last_Mile.mp3",
+   "start": 270,
+   "end": 350
+  },
+  {
+   "query": "bandleader explains to an interviewer how he will fit a big cast into a new fifteen minute daily show",
+   "kind": "para",
+   "file": "OTRR_Mr_District_Attorney_Singles__Mr_District_Attorney_39-06-16_055_The_Last_Mile.mp3",
+   "start": 840,
+   "end": 915
+  },
+  {
+   "query": "two orange blouses and two purple skirts",
+   "kind": "exact",
+   "file": "Perry_Mason_Radio_Show__PM_540421_2768_Gus_Meets_JT_on_His_Plane.mp3",
+   "start": 505,
+   "end": 565
+  },
+  {
+   "query": "crime boss in his private plane hands his associate a briefcase and a bank draft before a trip to the Caribbean",
+   "kind": "para",
+   "file": "Perry_Mason_Radio_Show__PM_540421_2768_Gus_Meets_JT_on_His_Plane.mp3",
+   "start": 125,
+   "end": 195
+  },
+  {
+   "query": "lawyer plans to stage a fake fatal car crash of a mother so her hiding daughter will show up at the funeral",
+   "kind": "para",
+   "file": "Perry_Mason_Radio_Show__PM_540421_2768_Gus_Meets_JT_on_His_Plane.mp3",
+   "start": 415,
+   "end": 495
+  },
+  {
+   "query": "law of excluded middle",
+   "kind": "exact",
+   "file": "problems_of_philosophy_librivox__problemsofphilosophy_07_russell_64kb.mp3",
+   "start": 235,
+   "end": 290
+  },
+  {
+   "query": "two men arguing over today's date used to illustrate a basic rule of logical inference",
+   "kind": "para",
+   "file": "problems_of_philosophy_librivox__problemsofphilosophy_07_russell_64kb.mp3",
+   "start": 115,
+   "end": 185
+  },
+  {
+   "query": "how adding pairs of named people shows that deduction can produce knowledge not in the premises",
+   "kind": "para",
+   "file": "problems_of_philosophy_librivox__problemsofphilosophy_07_russell_64kb.mp3",
+   "start": 842,
+   "end": 930
+  },
+  {
+   "query": "bit off his tongue",
+   "kind": "exact",
+   "file": "the_consolation_of_philosophy_librivox__consolationphilosophy_14_boethius_64kb.mp3",
+   "start": 135,
+   "end": 200
+  },
+  {
+   "query": "comparison of a power-hungry ruler to a mouse claiming authority over other mice, mocking human rulers",
+   "kind": "para",
+   "file": "the_consolation_of_philosophy_librivox__consolationphilosophy_14_boethius_64kb.mp3",
+   "start": 76,
+   "end": 130
+  },
+  {
+   "query": "verse about the emperor who burned the capital and had his own mother killed",
+   "kind": "para",
+   "file": "the_consolation_of_philosophy_librivox__consolationphilosophy_14_boethius_64kb.mp3",
+   "start": 350,
+   "end": 405
+  },
+  {
+   "query": "poisoning without poison",
+   "kind": "exact",
+   "file": "TheSaintVincentPriceOTR__The_Saint_500730_Author_of_Murder.mp3",
+   "start": 150,
+   "end": 215
+  },
+  {
+   "query": "friend jokes about a famous play where a king is killed by poison poured in his ear",
+   "kind": "para",
+   "file": "TheSaintVincentPriceOTR__The_Saint_500730_Author_of_Murder.mp3",
+   "start": 735,
+   "end": 800
+  },
+  {
+   "query": "detective realizes the dead financier himself was the midnight visitor, faking a murder plot to take revenge",
+   "kind": "para",
+   "file": "TheSaintVincentPriceOTR__The_Saint_500730_Author_of_Murder.mp3",
+   "start": 1470,
+   "end": 1530
+  },
+  {
+   "query": "a career that ends in the clouds",
+   "kind": "exact",
+   "file": "truth_about_jesus_librivox__jesus_myth_mangasarian_09_sc_64kb.mp3",
+   "start": 1330,
+   "end": 1390
+  },
+  {
+   "query": "imagined cross-examination of the apostles about how long they knew him and how old he was when executed",
+   "kind": "para",
+   "file": "truth_about_jesus_librivox__jesus_myth_mangasarian_09_sc_64kb.mp3",
+   "start": 1385,
+   "end": 1470
+  },
+  {
+   "query": "author says the governor's wife sending a letter about her dream is invented drama, and the hand washing is a scribe's addition",
+   "kind": "para",
+   "file": "truth_about_jesus_librivox__jesus_myth_mangasarian_09_sc_64kb.mp3",
+   "start": 355,
+   "end": 440
+  },
+  {
+   "query": "polished parabolic mirror",
+   "kind": "exact",
+   "file": "war_worlds_solo_librivox__warofworlds_b1_ch06_wells_64kb.mp3",
+   "start": 25,
+   "end": 85
+  },
+  {
+   "query": "crowd of onlookers gathers near the crater while three policemen and a telegram to the barracks try to protect the visitors",
+   "kind": "para",
+   "file": "war_worlds_solo_librivox__warofworlds_b1_ch06_wells_64kb.mp3",
+   "start": 125,
+   "end": 205
+  },
+  {
+   "query": "terrified crowd stampedes down a narrow dark road after a mounted policeman screams a warning; two women and a boy trampled",
+   "kind": "para",
+   "file": "war_worlds_solo_librivox__warofworlds_b1_ch06_wells_64kb.mp3",
+   "start": 280,
+   "end": 345
+  }
+ ],
+ "negative": [
+  "how to feed and maintain a sourdough starter",
+  "cryptocurrency mining profitability and GPU hash rates",
+  "Mars rover landing and the seven minutes of terror",
+  "tuning a guitar to drop D and changing strings"
+ ]
+}

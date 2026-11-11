@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .db import get_meta
+
 # bge models want this in front of the query (not the passages) for retrieval
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
@@ -68,6 +70,13 @@ class Searcher:
         )
         if key == self._key:
             return
+        built_with = get_meta(self.conn, "embed_model")
+        using = getattr(self.embedder, "model_name", None)
+        if built_with and using and built_with != using:
+            raise RuntimeError(
+                f"The index was embedded with {built_with} but search is using {using}. "
+                "Run `hearsay rechunk` to re-embed."
+            )
         rows = self.conn.execute("select id, embedding from chunks where embedding is not null").fetchall()
         self._ids = np.array([r["id"] for r in rows], dtype=np.int64)
         self._mat = (

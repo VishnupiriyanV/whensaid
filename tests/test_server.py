@@ -99,3 +99,16 @@ def test_server_is_read_only(home):
 def test_timecode():
     assert server.timecode(0) == "0:00:00"
     assert server.timecode(3725.9) == "1:02:05"
+
+
+def test_underscore_in_a_file_name_is_not_a_wildcard(home):
+    fill(home)
+    conn = db.connect(paths.db_path())
+    conn.execute("insert into sources (path, status) values ('/media/a_b.mp4', 'done')")
+    conn.execute("insert into sources (path, status) values ('/media/aXb.mp4', 'done')")
+    conn.commit()
+    assert server._resolve_source(conn, "a_b.mp4")["path"] == "/media/a_b.mp4"
+    with pytest.raises(ToolError):
+        server._resolve_source(conn, "%")
+    with pytest.raises(ToolError):
+        server._resolve_source(conn, "b.mp4")  # must match a whole name, not the end of one

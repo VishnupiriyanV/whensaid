@@ -166,3 +166,30 @@ def test_remove_root_only_touches_that_folder(tmp_path):
     assert counts(conn) == [1, 2, 1, 1]
     assert [r[0] for r in conn.execute("select path from roots")] == [str(twin)]
     assert (media / "talk.mp4").exists()  # recordings are never deleted
+
+
+def test_dangling_symlink_is_skipped(tmp_path):
+    media, conn, log = indexed(tmp_path)
+    (media / "gone.mp4").symlink_to(tmp_path / "nowhere.mp4")
+    assert indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=log) == {"done": 0, "no_audio": 0, "failed": 0}
+
+
+class Named(FakeEmbedder):
+    def __init__(self, name):
+        self.model_name = name
+
+
+def test_index_refuses_a_different_embedding_model(tmp_path):
+    import pytest
+    from hearsay.search import Searcher
+
+    media, conn, log = indexed(tmp_path)
+    indexer.run(conn, FakeTranscriber(), Named("model-a"), log=log)  # first named run claims the index
+    assert db.get_meta(conn, "embed_model") == "model-a"
+    with pytest.raises(indexer.ModelChanged):
+        indexer.run(conn, FakeTranscriber(), Named("model-b"), log=log)
+    with pytest.raises(RuntimeError):
+        Searcher(conn, Named("model-b"), query_prefix="").search("hello")
+    indexer.rechunk(conn, Named("model-b"), log=log)  # the documented way out
+    assert db.get_meta(conn, "embed_model") == "model-b"
+    indexer.run(conn, FakeTranscriber(), Named("model-b"), log=log)

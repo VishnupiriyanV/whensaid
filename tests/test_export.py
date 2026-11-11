@@ -32,7 +32,7 @@ def test_export_all_mirrors_paths_and_skips_unfinished(tmp_path):
     conn.commit()
 
     out = tmp_path / "out"
-    files = export.export_all(conn, out)
+    files, _ = export.export_all(conn, out)
     assert len(files) == 2  # the failed one is not exported
     # same file name in two folders does not collide
     assert (out / "media/a/talk.mp4.txt").read_text() == "[0:00:00] file 1\n"
@@ -48,3 +48,22 @@ def test_beside_writes_next_to_media(tmp_path):
     conn.commit()
     export.export_all(conn, None, "srt")
     assert (tmp_path / "talk.srt").exists()
+
+
+def test_beside_does_not_clobber_someone_elses_subtitles(tmp_path):
+    media = tmp_path / "film.mp4"
+    media.write_bytes(b"x")
+    mine = tmp_path / "film.srt"
+    mine.write_text("hand made subtitles")
+    conn = db.connect(tmp_path / "t.db")
+    conn.execute("insert into sources (id, path, status) values (1, ?, 'done')", (str(media),))
+    conn.execute("insert into segments (source_id, start, end, text) values (1, 0, 2, 'hi')")
+    conn.commit()
+    written, skipped = export.export_all(conn, None, "srt")
+    assert written == [] and skipped == [mine]
+    assert mine.read_text() == "hand made subtitles"
+    written, skipped = export.export_all(conn, None, "srt", overwrite=True)
+    assert written == [mine] and "hi" in mine.read_text()
+    # our own earlier export is not "someone else's": rewriting it is fine
+    written, skipped = export.export_all(conn, None, "srt")
+    assert written == [mine] and skipped == []

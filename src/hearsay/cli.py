@@ -18,7 +18,7 @@ def cmd_add(args):
 
 def cmd_index(args):
     from .embed import Embedder
-    from .indexer import AlreadyRunning, index_lock, run, watch
+    from .indexer import AlreadyRunning, ModelChanged, index_lock, run, watch
     from .transcribe import Transcriber
 
     conn = db.connect(paths.db_path())
@@ -33,6 +33,8 @@ def cmd_index(args):
             counts = run(conn, Transcriber(), Embedder())
     except AlreadyRunning:
         sys.exit("another hearsay index is already running")
+    except ModelChanged as e:
+        sys.exit(str(e))
     print(counts)
 
 
@@ -65,9 +67,11 @@ def cmd_export(args):
 
     conn = db.connect(paths.db_path())
     out = None if args.beside else (Path(args.out).expanduser() if args.out else paths.home() / "transcripts")
-    files = export_all(conn, out, args.format)
+    files, skipped = export_all(conn, out, args.format, overwrite=args.overwrite)
     where = "next to each recording" if out is None else str(out)
     print(f"wrote {len(files)} {args.format} files, {where}")
+    if skipped:
+        print(f"left {len(skipped)} existing files alone (pass --overwrite to replace them), e.g. {skipped[0]}")
 
 
 def cmd_search(args):
@@ -82,11 +86,15 @@ def cmd_search(args):
         conn = db.connect_readonly(paths.db_path())
     except FileNotFoundError:
         sys.exit("nothing indexed yet: hearsay add <folder>, then hearsay index")
-    hits = Searcher(conn, Embedder(), reranker=load_reranker(), min_relevance=min_relevance()).search(args.query, limit=args.limit)
+    try:
+        hits = Searcher(conn, Embedder(), reranker=load_reranker(), min_relevance=min_relevance()).search(args.query, limit=args.limit)
+    except RuntimeError as e:
+        sys.exit(str(e))
     if args.json:
         print(json.dumps([
             {"file": os.path.basename(h.path), "path": h.path, "start": round(h.start, 1),
-             "at": timecode(h.start), "similarity": h.similarity and round(h.similarity, 3), "text": h.text}
+             "at": timecode(h.start), "similarity": h.similarity and round(h.similarity, 3),
+             "relevance": h.relevance and round(h.relevance, 1), "text": h.text}
             for h in hits
         ], indent=1))
         return
@@ -149,6 +157,7 @@ def main(argv=None):
     e.add_argument("--format", choices=["txt", "srt"], default="txt")
     e.add_argument("--out", help="folder to write into (default: ~/.hearsay/transcripts)")
     e.add_argument("--beside", action="store_true", help="write next to each recording instead")
+    e.add_argument("--overwrite", action="store_true", help="with --beside: replace files that are already there")
     e.set_defaults(fn=cmd_export)
 
     q = sub.add_parser("search", help="search from the terminal")

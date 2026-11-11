@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .chunk import Segment, make_chunks
-from .db import forget_chunks, forget_source
+from .db import forget_chunks, forget_source, get_meta, set_meta
 from .paths import home
 from .transcribe import NoAudio
 
@@ -18,6 +18,27 @@ MEDIA_EXTS = {
 
 class AlreadyRunning(Exception):
     pass
+
+
+class ModelChanged(Exception):
+    pass
+
+
+def claim_embed_model(conn, embedder) -> None:
+    """Vectors from two embedding models can't be compared, so remember which one built
+    the index and refuse to add to it with another."""
+    name = getattr(embedder, "model_name", None)
+    if not name:
+        return
+    have = get_meta(conn, "embed_model")
+    if have is None:
+        set_meta(conn, "embed_model", name)
+        conn.commit()
+    elif have != name:
+        raise ModelChanged(
+            f"this index was embedded with {have}, but the embedder is now {name}. "
+            "Run `hearsay rechunk` to re-embed everything with the new model."
+        )
 
 
 @contextmanager
@@ -74,7 +95,10 @@ def scan(conn, root: str, settle: float = 0, retry_failed: bool = True) -> list[
     todo = []
     now = time.time()
     for path in find_media(root):
-        st = os.stat(path)
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue  # dangling symlink, or the file vanished since the walk
         if settle and now - st.st_mtime < settle:
             continue
         row = conn.execute("select * from sources where path = ?", (path,)).fetchone()
@@ -195,11 +219,16 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
         with conn:
             forget_chunks(conn, source_id)
             _insert_chunks(conn, source_id, chunks, vecs)
+    name = getattr(embedder, "model_name", None)
+    if name:
+        set_meta(conn, "embed_model", name)
+        conn.commit()
     print(f"rechunked {len(ids)} files", file=log)
     return len(ids)
 
 
 def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True) -> dict:
+    claim_embed_model(conn, embedder)
     prune(conn, log)
     roots = [r["path"] for r in conn.execute("select path from roots order by path")]
     todo = []

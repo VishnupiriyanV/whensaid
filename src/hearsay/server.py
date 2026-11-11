@@ -54,7 +54,9 @@ def _resolve_source(conn, file: str):
     """Accepts a full path or a file name. Only files that are in the index can be read."""
     rows = conn.execute("select * from sources where path = ?", (file,)).fetchall()
     if not rows:
-        rows = conn.execute("select * from sources where path like ?", (f"%{os.sep}{file}",)).fetchall()
+        # compared in python: a LIKE here would treat _ and % in file names as wildcards
+        tail = os.sep + file.lstrip(os.sep)
+        rows = [r for r in conn.execute("select * from sources") if r["path"].endswith(tail)]
     if not rows:
         raise ToolError(f"{file!r} is not in the index. Use list_sources to see what is.")
     if len(rows) > 1:

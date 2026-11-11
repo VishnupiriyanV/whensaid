@@ -6,8 +6,8 @@ Point it at folders of recordings (talks, courses, meetings, interviews, podcast
 Your agent (Claude Code, Cursor, ...) calls `search("when did they talk about X")` and gets back
 the file, the exact timestamp, and the passage. Everything runs on your machine, nothing is uploaded.
 
-**Status: pre-alpha.** Works on Linux with an NVIDIA GPU (CPU fallback exists but is untested).
-See [docs/PLAN.md](docs/PLAN.md) for the research, decisions and measured results.
+**Status: pre-alpha.** Linux only so far. Runs on an NVIDIA GPU or on CPU. English only.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what is next and [docs/PLAN.md](docs/PLAN.md) for the research and measured results.
 
 ## Use it
 
@@ -38,7 +38,7 @@ Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
 
 ffmpeg-free decode (PyAV) -> faster-whisper with VAD and word timestamps -> ~45 s overlapping
 chunks -> bge-small embeddings -> one SQLite file (FTS5 keyword index + vectors).
-Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about 0.8 s on CPU; `HEARSAY_RERANK=0` skips it). Passages it scores as unrelated are dropped, so off-topic questions return nothing (`HEARSAY_MIN_RELEVANCE` tunes this, `off` disables).
+Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about 2 s per search on CPU at the moment; `HEARSAY_RERANK=0` skips it). Passages it scores as unrelated are dropped, so off-topic questions usually return nothing, though this gets less reliable as the library grows (`HEARSAY_MIN_RELEVANCE` tunes this, `off` disables).
 
 ## Develop
 
