@@ -38,7 +38,7 @@ Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
 
 ffmpeg-free decode (PyAV) -> faster-whisper with VAD and word timestamps -> ~45 s overlapping
 chunks -> bge-small embeddings -> one SQLite file (FTS5 keyword index + vectors).
-Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about 2 s per search on CPU at the moment; `HEARSAY_RERANK=0` skips it). Passages it scores as unrelated are dropped, so off-topic questions usually return nothing, though this gets less reliable as the library grows (`HEARSAY_MIN_RELEVANCE` tunes this, `off` disables).
+Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about half a second per search on CPU; `HEARSAY_RERANK=0` skips it). Passages it scores as unrelated are dropped, so off-topic questions usually return nothing, and borderline hits come back marked `weak` (`HEARSAY_MIN_RELEVANCE` tunes this, `off` disables).
 
 ## Develop
 

@@ -112,3 +112,21 @@ def test_underscore_in_a_file_name_is_not_a_wildcard(home):
         server._resolve_source(conn, "%")
     with pytest.raises(ToolError):
         server._resolve_source(conn, "b.mp4")  # must match a whole name, not the end of one
+
+
+def test_weak_matches_are_labelled(home, monkeypatch):
+    from hearsay import rerank
+
+    assert rerank.strength(None) is None
+    assert rerank.strength(-5.1) == "weak" and rerank.strength(-4.9) == "strong"
+
+    class Lukewarm:
+        def score(self, query, texts):
+            return [-6.0 - i for i in range(len(texts))]
+
+    fill(home)
+    server._state["searcher"] = Searcher(server._conn(), TinyEmbedder(), query_prefix="", reranker=Lukewarm(), min_relevance=-9.0)
+    out = server.search("cat kitten money", limit=5)
+    assert out["results"] and all(r["match"] == "weak" for r in out["results"])
+    assert "weak" in out["note"]
+    assert all(r["relevance"] >= -9 for r in out["results"])  # below the floor is still dropped

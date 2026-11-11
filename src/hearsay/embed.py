@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from .paths import models_dir
@@ -17,6 +19,7 @@ class Embedder:
             self.model_name,
             cache_dir=str(models_dir() / "fastembed"),
             local_files_only=not self.allow_download,
+            threads=min(4, os.cpu_count() or 1),  # see rerank.THREADS
         )
 
     def encode(self, texts: list[str]) -> np.ndarray:

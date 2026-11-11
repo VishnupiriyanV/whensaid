@@ -78,7 +78,7 @@ def cmd_search(args):
     import json
 
     from .embed import Embedder
-    from .rerank import load_reranker, min_relevance
+    from .rerank import load_reranker, min_relevance, strength
     from .search import Searcher
     from .util import timecode
 
@@ -94,15 +94,17 @@ def cmd_search(args):
         print(json.dumps([
             {"file": os.path.basename(h.path), "path": h.path, "start": round(h.start, 1),
              "at": timecode(h.start), "similarity": h.similarity and round(h.similarity, 3),
-             "relevance": h.relevance and round(h.relevance, 1), "text": h.text}
+             "relevance": h.relevance and round(h.relevance, 1), "match": strength(h.relevance), "text": h.text}
             for h in hits
         ], indent=1))
         return
     if not hits:
         print("nothing relevant found")
+    elif strength(hits[0].relevance) == "weak":
+        print("only weak matches, the recordings may not cover this:")
     for h in hits:
-        sim = "  -  " if h.similarity is None else f"{h.similarity:.2f}"
-        print(f"{os.path.basename(h.path)}  {timecode(h.start)}  sim {sim}  {h.text[:200]}")
+        mark = {"weak": "weak  ", "strong": "      "}.get(strength(h.relevance), "      ")
+        print(f"{mark}{os.path.basename(h.path)}  {timecode(h.start)}  {h.text[:200]}")
 
 
 def cmd_serve(args):

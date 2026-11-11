@@ -10,6 +10,7 @@ from pydantic import Field
 
 from . import db, paths
 from .indexer import indexer_running
+from .rerank import strength
 from .search import Searcher
 from .util import timecode  # noqa: F401 (also used by tests via server.timecode)
 
@@ -19,8 +20,9 @@ Start with `search`: it returns the matching passage, the file, and where in the
 said (seconds and h:mm:ss). Use `get_transcript` to read more around a hit. All times are in
 seconds from the start of the file. Passages the reranker judges unrelated are left out, so an
 empty result (it comes with a note) means the recordings most likely don't cover the topic: say
-so rather than guessing. `relevance` is the reranker score (higher is better, below about -5 is
-weak); `similarity` is cosine similarity. If `search` says nothing is indexed, tell the user to
+so rather than guessing. Each hit has `match`: "strong" or "weak". A weak hit is often off-topic,
+so check its text before using it; when even the best hit is weak the result says so in `note`.
+`relevance` is the reranker score behind that (higher is better), `similarity` is cosine similarity. If `search` says nothing is indexed, tell the user to
 run `hearsay add <folder>` and `hearsay index`.
 """
 
@@ -93,12 +95,18 @@ def search(
                 "text": h.text,
                 "similarity": None if h.similarity is None else round(h.similarity, 3),
                 "relevance": None if h.relevance is None else round(h.relevance, 1),
+                "match": strength(h.relevance),
             }
             for h in hits
         ],
     }
     if not hits:
         out["note"] = "No passage was relevant enough. The recordings probably don't cover this."
+    elif strength(hits[0].relevance) == "weak":
+        out["note"] = (
+            "Only weak matches. The recordings may not cover this: read the passages before "
+            "relying on them, and say so if they don't answer the question."
+        )
     return out
 
 
