@@ -54,9 +54,7 @@ def _searcher() -> Searcher:
 
 
 def _has_web_cols(conn) -> bool:
-    if "web_cols" not in _state:
-        _state["web_cols"] = "url" in {r[1] for r in conn.execute("pragma table_info(sources)")}
-    return _state["web_cols"]
+    return "url" in {r[1] for r in conn.execute("pragma table_info(sources)")}  # not cached: a writer may upgrade the index later
 
 
 def _col(row, name):

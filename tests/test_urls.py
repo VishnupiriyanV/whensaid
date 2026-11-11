@@ -11,6 +11,7 @@ from hearsay.util import deep_link
 LOG = open("/dev/null", "w")
 
 
+
 def vid(i, title=None):
     return {"key": f"youtube:{i}", "url": f"https://www.youtube.com/watch?v={i}", "title": title or f"Video {i}"}
 
@@ -179,3 +180,20 @@ def test_deep_links():
     assert deep_link("https://youtu.be/abc", 5) == "https://www.youtube.com/watch?v=abc&t=5s"
     assert deep_link("https://vimeo.com/123456", 61) == "https://vimeo.com/123456#t=61s"
     assert deep_link("https://example.com/talk.mp4", 61) is None and deep_link(None, 1) is None
+
+
+def test_server_notices_an_index_upgraded_while_it_runs(tmp_path):
+    old = sqlite3.connect(tmp_path / "m.db")
+    old.executescript(db.SCHEMA)
+    old.commit()
+    old.close()
+    ro = db.connect_readonly(tmp_path / "m.db")
+    s = Searcher(ro, Emb(), query_prefix="")
+    assert s.search("lighthouse") == []  # old schema, nothing indexed, no error
+    w = db.connect(tmp_path / "m.db")  # a writer upgrades it, as `hearsay add-url` would
+    f = FakeFetcher()
+    urls.add_url(w, f, "https://www.youtube.com/watch?v=abc123", log=LOG)
+    indexer.run(w, Tr(), Emb(), log=LOG, fetcher=f)
+    w.commit()
+    hit = s.search("lighthouse", mode="keyword")[0]  # same Searcher, same read-only connection
+    assert (hit.title, hit.url) == ("Video abc123", "https://www.youtube.com/watch?v=abc123")

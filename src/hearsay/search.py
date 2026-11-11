@@ -59,7 +59,6 @@ class Searcher:
         self.reranker = reranker
         self.rerank_depth = rerank_depth
         self.min_relevance = min_relevance  # drop hits the reranker scores below this
-        self._web_cols = None
         self.query_prefix = query_prefix
         self._key = None
         self._ids = np.zeros(0, dtype=np.int64)
@@ -142,9 +141,10 @@ class Searcher:
             return []
 
         marks = ",".join("?" * len(fused))
-        if self._web_cols is None:  # an index made before web videos existed, opened read-only, has no such columns
-            self._web_cols = "url" in {r[1] for r in self.conn.execute("pragma table_info(sources)")}
-        extra = "s.url, s.title" if self._web_cols else "null as url, null as title"
+        # an index made before web videos existed has no such columns until a writer upgrades it,
+        # which can happen while this server is running, so look every time (it is cheap)
+        web = "url" in {r[1] for r in self.conn.execute("pragma table_info(sources)")}
+        extra = "s.url, s.title" if web else "null as url, null as title"
         rows = {
             r["id"]: r
             for r in self.conn.execute(

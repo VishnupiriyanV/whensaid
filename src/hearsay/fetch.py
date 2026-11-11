@@ -100,6 +100,11 @@ class YtDlp:
         try:
             info = json.loads(self._run(["-J", "--skip-download", "--no-playlist"], url))
             duration = float(info.get("duration") or 0)
+            orig = [k for k in (info.get("automatic_captions") or {}) if k.endswith("-orig") and k != "en-orig"]
+            if orig and not info.get("subtitles", {}).get("en"):
+                # youtube offers a machine-translated English track for any language; that is not
+                # what was said, and whisper here is English-only, so don't pretend
+                raise FetchError(f"video is not in English (original language {orig[0][:-5]}); only English is supported so far")
             pick = choose_track(info)
             if pick:
                 kind, lang = pick
