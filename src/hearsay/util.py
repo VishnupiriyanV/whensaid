@@ -1,3 +1,16 @@
+def canonical_url(url: str) -> str:
+    """The form a youtube video is stored under (no list, t or si noise), others unchanged."""
+    from urllib.parse import parse_qs, urlparse
+
+    u = urlparse(url)
+    host = u.netloc.lower().removeprefix("www.").removeprefix("m.")
+    if host == "youtube.com" and u.path == "/watch" and "v" in parse_qs(u.query):
+        return f"https://www.youtube.com/watch?v={parse_qs(u.query)['v'][0]}"
+    if host == "youtu.be" and u.path.strip("/"):
+        return f"https://www.youtube.com/watch?v={u.path.strip('/')}"
+    return url
+
+
 def deep_link(url: str | None, seconds: float) -> str | None:
     """A link that opens the video at that second, for sites where we know the format."""
     if not url:

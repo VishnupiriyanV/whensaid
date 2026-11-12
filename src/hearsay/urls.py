@@ -4,6 +4,7 @@ import sys
 import time
 
 from .db import forget_source
+from .util import canonical_url
 
 REFRESH_AFTER = 3600  # seconds between re-listing a playlist or channel, so --watch doesn't hammer the site
 
@@ -63,7 +64,9 @@ def pending(conn, retry_failed: bool = True) -> list[str]:
 
 def remove(conn, url: str) -> int:
     """Forget a playlist/channel and its videos, or a single video. Returns videos removed."""
-    ids = [r["id"] for r in conn.execute("select id from sources where kind = 'url' and (url = ? or feed_url = ?)", (url, url))]
+    canon = canonical_url(url)  # youtu.be/ID or ...&t=30s names the same video as the stored url
+    ids = [r["id"] for r in conn.execute(
+        "select id from sources where kind = 'url' and (url in (?, ?) or feed_url = ?)", (url, canon, url))]
     with conn:
         for sid in ids:
             forget_source(conn, sid)

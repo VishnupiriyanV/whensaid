@@ -53,6 +53,11 @@ class Tr:
         return [Segment(0, 5, "spoken words")], 5.0
 
 
+@pytest.fixture(autouse=True)
+def no_pause(monkeypatch):
+    monkeypatch.setattr(indexer, "WEB_PAUSE", 0)
+
+
 @pytest.fixture
 def conn(tmp_path):
     return db.connect(tmp_path / "u.db")
@@ -197,3 +202,21 @@ def test_server_notices_an_index_upgraded_while_it_runs(tmp_path):
     w.commit()
     hit = s.search("lighthouse", mode="keyword")[0]  # same Searcher, same read-only connection
     assert (hit.title, hit.url) == ("Video abc123", "https://www.youtube.com/watch?v=abc123")
+
+
+def test_remove_accepts_other_forms_of_the_same_video_url(conn):
+    f = FakeFetcher()
+    urls.add_url(conn, f, "https://www.youtube.com/watch?v=abc123", log=LOG)
+    assert urls.remove(conn, "https://youtu.be/abc123") == 1
+    urls.add_url(conn, f, "https://www.youtube.com/watch?v=abc123", log=LOG)
+    assert urls.remove(conn, "https://www.youtube.com/watch?v=abc123&list=PL1&t=30s") == 1
+
+
+def test_pause_only_between_web_videos(conn, monkeypatch):
+    pauses = []
+    monkeypatch.setattr(indexer, "WEB_PAUSE", 7)
+    monkeypatch.setattr(indexer.time, "sleep", pauses.append)
+    f = FakeFetcher(playlists={"https://y/p": [vid("a"), vid("b"), vid("c")]})
+    urls.add_url(conn, f, "https://y/p", log=LOG)
+    indexer.run(conn, Tr(), Emb(), log=LOG, fetcher=f)
+    assert pauses == [7, 7]  # three videos, two gaps

@@ -256,6 +256,9 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
     return len(ids)
 
 
+WEB_PAUSE = 3.0  # seconds between two web videos; each one costs a few yt-dlp requests
+
+
 def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_failed: bool = True,
         use_subtitles: bool = False, fetcher=None) -> dict:
     claim_embed_model(conn, embedder)
@@ -269,7 +272,12 @@ def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_fa
         todo += urls.pending(conn, retry_failed)
 
     counts = {"done": 0, "no_audio": 0, "failed": 0}
+    last_was_web = False
+    web = set(urls.pending(conn)) if fetcher is not None else set()
     for i, path in enumerate(todo, 1):
+        if path in web and last_was_web:
+            time.sleep(WEB_PAUSE)
+        last_was_web = path in web
         t0 = time.time()
         print(f"[{i}/{len(todo)}] {path}", file=log, flush=True)
         result = index_file(conn, path, transcriber, embedder, use_subtitles, fetcher)
