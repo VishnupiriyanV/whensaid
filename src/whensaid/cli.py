@@ -25,6 +25,10 @@ def cmd_index(args):
     conn = db.connect(paths.db_path())
     try:
         with index_lock():
+            if args.retry_skipped:
+                from .urls import retry_skipped
+
+                print(f"{retry_skipped(conn)} skipped items set to try again")
             if args.watch:
                 try:
                     watch(conn, Transcriber(), Embedder(), interval=args.interval, use_subtitles=args.subtitles,
@@ -132,11 +136,28 @@ def cmd_serve(args):
 
 def cmd_status(args):
     conn = db.connect(paths.db_path())
-    rows = conn.execute("select status, count(*) n, coalesce(sum(duration), 0) d from sources group by status")
+    rows = conn.execute(
+        "select status, sum(kind = 'file') files, sum(kind = 'url') web, coalesce(sum(duration), 0) d "
+        "from sources where status != 'removed' group by status"
+    ).fetchall()
     for r in rows:
-        print(f"{r['status']:10} {r['n']:5} files  {r['d'] / 3600:.2f} h")
+        print(f"{r['status']:10} {r['files']:5} files {r['web']:5} web videos  {r['d'] / 3600:.2f} h")
     n = conn.execute("select count(*) from chunks").fetchone()[0]
     print(f"{n} chunks")
+    feeds = conn.execute("select url, title from feeds").fetchall()
+    if feeds:
+        print(f"following {len(feeds)} playlists or channels:")
+        for f in feeds:
+            print(f"  {f['title'] or ''}  {f['url']}")
+    for status, what in (("failed", "failed, will be tried again"), ("skipped", "skipped for good (whensaid index --retry-skipped to try anyway)")):
+        why = conn.execute(
+            "select coalesce(error, '?') e, count(*) n, min(coalesce(title, path)) eg from sources where status = ? group by e order by n desc limit 5",
+            (status,),
+        ).fetchall()
+        if why:
+            print(f"{what}:")
+            for w in why:
+                print(f"  {w['n']:4}  {w['e'][:90]}  (e.g. {os.path.basename(w['eg'])[:50]})")
 
 
 def cmd_models_pull(args):
@@ -178,6 +199,7 @@ def main(argv=None):
     ix.add_argument("--interval", type=float, default=30, help="seconds between scans with --watch")
     ix.add_argument("--subtitles", action="store_true",
                     help="use a .srt/.vtt next to a recording instead of transcribing it (English assumed)")
+    ix.add_argument("--retry-skipped", action="store_true", help="try again what was skipped for good (live then, private then, ...)")
     ix.set_defaults(fn=cmd_index)
     sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
     e = sub.add_parser("export", help="write transcripts as text files an agent can grep")

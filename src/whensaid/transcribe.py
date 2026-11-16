@@ -28,6 +28,23 @@ class NoAudio(Exception):
     pass
 
 
+class Unintelligible(Exception):
+    """The model was guessing: most likely the speech is not English, or it is not speech."""
+
+
+# Mean probability the model gives its own words. Measured on 3 minute samples: English of every
+# kind we have (clean, 1940s radio, film, sports commentary, Indian-accented) 0.90 to 0.99; French,
+# German, Spanish, Japanese, Russian, Hindi and Chinese forced through as English 0.46 to 0.71.
+# The model's own language detection is no use here, it answers "en" for all of them.
+MIN_CONFIDENCE = 0.75
+MIN_WORDS = 40  # below this there is too little to judge, keep whatever came out
+
+
+def min_confidence() -> float:
+    """WHENSAID_MIN_CONFIDENCE overrides the default, 0 turns the check off."""
+    return float(os.environ.get("WHENSAID_MIN_CONFIDENCE", MIN_CONFIDENCE))
+
+
 class Transcriber:
     def __init__(self, device=None, compute_type=None, model=None, allow_download=False):
         d, c, m = pick_device()
@@ -36,6 +53,7 @@ class Transcriber:
         self.model_name = model or m
         self.allow_download = allow_download
         self._pipe = None
+        self.last_confidence = None  # of the most recent transcribe() call
 
     def _load(self):
         from faster_whisper import BatchedInferencePipeline, WhisperModel
@@ -75,9 +93,16 @@ class Transcriber:
             without_timestamps=False,
             word_timestamps=True,
         )
-        out = []
+        out, probs = [], []
         for s in segs:
             out += split_on_gaps(s.words or [], fallback=s)
+            probs += [w.probability for w in (s.words or [])]
+        self.last_confidence = sum(probs) / len(probs) if probs else None
+        if len(probs) >= MIN_WORDS and self.last_confidence < min_confidence():
+            raise Unintelligible(
+                f"transcript unreliable (mean word confidence {self.last_confidence:.2f}): "
+                "probably not English, or not speech"
+            )
         return out, len(audio) / 16000
 
 

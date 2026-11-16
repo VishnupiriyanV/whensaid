@@ -60,6 +60,7 @@ SOURCE_COLUMNS = {
     "title": "text",
     "captions": "text",                      # manual, auto, whisper or subtitle-file
     "feed_url": "text",
+    "confidence": "real",                    # mean word probability when whisper made the transcript
 }
 
 

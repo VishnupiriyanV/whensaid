@@ -1,6 +1,6 @@
 [project]
 name = "whensaid"
-version = "0.0.1"
+version = "0.1.0"
 description = "Local, offline search over your video and audio recordings, exposed to AI agents over MCP."
 readme = "README.md"
 license = { text = "MIT" }
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12"]  # VERIFY on target GPU
+cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12"]  # what ctranslate2 needs on an NVIDIA GPU
 url = ["yt-dlp"]  # for `whensaid add-url`
 dev = ["pytest"]
 

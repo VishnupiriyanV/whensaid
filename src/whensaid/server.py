@@ -70,6 +70,8 @@ def _resolve_source(conn, file: str):
         # compared in python: a LIKE here would treat _ and % in file names as wildcards
         tail = os.sep + file.lstrip(os.sep)
         rows = [r for r in conn.execute("select * from sources") if r["path"].endswith(tail)]
+    if not rows and _has_web_cols(conn):
+        rows = conn.execute("select * from sources where title = ?", (file,)).fetchall()  # search shows web videos by title
     if not rows:
         raise ToolError(f"{file!r} is not in the index. Use list_sources to see what is.")
     if len(rows) > 1:
@@ -159,9 +161,9 @@ def list_sources(limit: Annotated[int, Field(ge=1, le=500)] = 100) -> dict:
     with _lock:
         conn = _conn()
         rows = conn.execute(
-            "select * from sources order by path limit ?", (limit,)
+            "select * from sources where status != 'removed' order by path limit ?", (limit,)
         ).fetchall()
-        total = conn.execute("select count(*) from sources").fetchone()[0]
+        total = conn.execute("select count(*) from sources where status != 'removed'").fetchone()[0]
     return {
         "total": total,
         "sources": [
@@ -177,7 +179,8 @@ def index_status() -> dict:
     """Say whether indexing is running and how many files are done, waiting or failed."""
     with _lock:
         conn = _conn()
-        counts = {r["status"]: r["n"] for r in conn.execute("select status, count(*) n from sources group by status")}
+        counts = {r["status"]: r["n"] for r in conn.execute(
+            "select status, count(*) n from sources where status != 'removed' group by status")}
         failed = conn.execute("select path, error from sources where status = 'failed' limit 5").fetchall()
         chunks = conn.execute("select count(*) from chunks").fetchone()[0]
     return {

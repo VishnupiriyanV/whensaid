@@ -10,7 +10,17 @@ REFRESH_AFTER = 3600  # seconds between re-listing a playlist or channel, so --w
 
 
 def register(conn, entry: dict, feed_url: str | None = None) -> bool:
-    """Add a video as pending. False if it is already known (the same video reached by another route)."""
+    """Add a video as pending. False if it is already known (the same video reached by another route).
+    Asked for by itself (no feed), a video that was skipped or removed earlier gets another go."""
+    if entry.get("live"):
+        return False  # a channel lists its live streams too; they are not recordings
+    if feed_url is None:
+        again = conn.execute(
+            "update sources set status = 'pending', error = null where path = ? and status in ('skipped', 'removed')",
+            (entry["key"],),
+        )
+        if again.rowcount:
+            return True
     cur = conn.execute(
         "insert or ignore into sources (path, kind, url, title, feed_url, status) values (?, 'url', ?, ?, ?, 'pending')",
         (entry["key"], entry["url"], entry.get("title"), feed_url),
@@ -22,6 +32,7 @@ def add_url(conn, fetcher, url: str, limit: int = 200, no_playlist: bool = False
     kind, title, entries = fetcher.entries(url, limit, no_playlist)
     feed = url if kind == "playlist" else None
     new = 0
+    live = sum(1 for e in entries if e.get("live"))
     with conn:
         if feed:
             conn.execute(
@@ -31,8 +42,9 @@ def add_url(conn, fetcher, url: str, limit: int = 200, no_playlist: bool = False
             )
         for e in entries:
             new += register(conn, e, feed)
-    print(f"{kind} {title or url}: {len(entries)} videos, {new} new", file=log)
-    return {"kind": kind, "title": title, "found": len(entries), "new": new}
+    note = f", {live} live or upcoming left out" if live else ""
+    print(f"{kind} {title or url}: {len(entries)} videos, {new} new{note}", file=log)
+    return {"kind": kind, "title": title, "found": len(entries), "new": new, "live": live}
 
 
 def refresh_feeds(conn, fetcher, log=sys.stderr, force: bool = False) -> int:
@@ -65,11 +77,25 @@ def pending(conn, retry_failed: bool = True) -> list[str]:
 def remove(conn, url: str) -> int:
     """Forget a playlist/channel and its videos, or a single video. Returns videos removed."""
     canon = canonical_url(url)  # youtu.be/ID or ...&t=30s names the same video as the stored url
-    ids = [r["id"] for r in conn.execute(
-        "select id from sources where kind = 'url' and (url in (?, ?) or feed_url = ?)", (url, canon, url))]
+    rows = conn.execute(
+        "select id, url, feed_url from sources where kind = 'url' and status != 'removed' and (url in (?, ?) or feed_url = ?)",
+        (url, canon, url),
+    ).fetchall()
     with conn:
-        for sid in ids:
-            forget_source(conn, sid)
-            conn.execute("delete from sources where id = ?", (sid,))
+        for r in rows:
+            forget_source(conn, r["id"])
+            followed = r["feed_url"] and r["feed_url"] != url and conn.execute(
+                "select 1 from feeds where url = ?", (r["feed_url"],)).fetchone()
+            if followed:
+                # its playlist is still followed: keep a marker, or the next refresh brings it back
+                conn.execute("update sources set status = 'removed', error = null where id = ?", (r["id"],))
+            else:
+                conn.execute("delete from sources where id = ?", (r["id"],))
+        conn.execute("delete from sources where feed_url = ? and status = 'removed'", (url,))
         conn.execute("delete from feeds where url = ?", (url,))
-    return len(ids)
+    return len(rows)
+
+
+def retry_skipped(conn) -> int:
+    with conn:
+        return conn.execute("update sources set status = 'pending', error = null where status = 'skipped'").rowcount

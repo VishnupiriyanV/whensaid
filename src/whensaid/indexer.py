@@ -9,7 +9,8 @@ from . import subtitles, urls
 from .chunk import Segment, make_chunks
 from .db import forget_chunks, forget_source, get_meta, set_meta
 from .paths import home
-from .transcribe import NoAudio
+from .fetch import Skip
+from .transcribe import NoAudio, Unintelligible
 
 MEDIA_EXTS = {
     ".mp4", ".mkv", ".mov", ".avi", ".webm", ".m4v",
@@ -201,6 +202,11 @@ def index_file(conn, path: str, transcriber, embedder, use_subtitles: bool = Fal
         conn.execute("update sources set status = 'no_audio' where id = ?", (source_id,))
         conn.commit()
         return "no_audio"
+    except (Skip, Unintelligible) as e:
+        # will not work on a retry either, so it is not asked for again (see urls.retry_skipped)
+        conn.execute("update sources set status = 'skipped', error = ? where id = ?", (str(e), source_id))
+        conn.commit()
+        return "skipped"
     except Exception as e:
         conn.execute(
             "update sources set status = 'failed', error = ? where id = ?", (str(e), source_id)
@@ -220,8 +226,9 @@ def index_file(conn, path: str, transcriber, embedder, use_subtitles: bool = Fal
         )
         _insert_chunks(conn, source_id, chunks, vecs)
         conn.execute(
-            "update sources set status = 'done', duration = ?, error = null, captions = ?, indexed_at = datetime('now') where id = ?",
-            (duration, how, source_id),
+            "update sources set status = 'done', duration = ?, error = null, captions = ?, confidence = ?, "
+            "indexed_at = datetime('now') where id = ?",
+            (duration, how, getattr(transcriber, "last_confidence", None) if how == "whisper" else None, source_id),
         )
     return "done"
 
@@ -271,7 +278,7 @@ def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_fa
         urls.refresh_feeds(conn, fetcher, log)
         todo += urls.pending(conn, retry_failed)
 
-    counts = {"done": 0, "no_audio": 0, "failed": 0}
+    counts = {"done": 0, "no_audio": 0, "failed": 0, "skipped": 0}
     last_was_web = False
     web = set(urls.pending(conn)) if fetcher is not None else set()
     for i, path in enumerate(todo, 1):
@@ -290,7 +297,7 @@ def watch(conn, transcriber, embedder, log=sys.stderr, interval: float = 30, set
           rounds: int | None = None, sleep=time.sleep, use_subtitles: bool = False, fetcher=None) -> dict:
     """Keep indexing as files show up. A failed file is retried only once it changes, so a
     broken one doesn't loop forever. rounds and sleep exist so tests can run it."""
-    total = {"done": 0, "no_audio": 0, "failed": 0}
+    total = {"done": 0, "no_audio": 0, "failed": 0, "skipped": 0}
     n = 0
     print(f"watching every {interval:.0f}s, ctrl-c to stop", file=log, flush=True)
     while rounds is None or n < rounds:

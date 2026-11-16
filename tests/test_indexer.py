@@ -33,14 +33,14 @@ def test_run_and_reindex(tmp_path):
     conn.execute("insert into roots values (?)", (str(media),))
 
     counts = indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open("/dev/null", "w"))
-    assert counts == {"done": 1, "no_audio": 1, "failed": 1}
+    assert counts == {"done": 1, "no_audio": 1, "failed": 1, "skipped": 0}
     assert conn.execute("select count(*) from chunks").fetchone()[0] == 1
     hit = conn.execute("select rowid from chunks_fts where chunks_fts match 'gradient'").fetchall()
     assert len(hit) == 1
 
     # second run: the done and no_audio files are untouched, only the failed one retries
     counts = indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open("/dev/null", "w"))
-    assert counts == {"done": 0, "no_audio": 0, "failed": 1}
+    assert counts == {"done": 0, "no_audio": 0, "failed": 1, "skipped": 0}
 
     # a changed file is picked up and its old rows replaced, not duplicated
     (media / "talk.mp4").write_bytes(b"y" * 20)
@@ -94,7 +94,7 @@ def test_watch_picks_up_new_files_and_does_not_retry_failures(tmp_path):
             return super().transcribe(path)
 
     total = indexer.watch(conn, Counting(), FakeEmbedder(), log=log, interval=0, settle=0, rounds=3, sleep=sleep)
-    assert total == {"done": 2, "no_audio": 1, "failed": 1}
+    assert total == {"done": 2, "no_audio": 1, "failed": 1, "skipped": 0}
     assert sum(p.endswith("broken.wav") for p in seen) == 1  # tried once, not every round
     assert sum(p.endswith("later.mp4") for p in seen) == 1
 
@@ -171,7 +171,7 @@ def test_remove_root_only_touches_that_folder(tmp_path):
 def test_dangling_symlink_is_skipped(tmp_path):
     media, conn, log = indexed(tmp_path)
     (media / "gone.mp4").symlink_to(tmp_path / "nowhere.mp4")
-    assert indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=log) == {"done": 0, "no_audio": 0, "failed": 0}
+    assert indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=log) == {"done": 0, "no_audio": 0, "failed": 0, "skipped": 0}
 
 
 class Named(FakeEmbedder):
@@ -193,3 +193,69 @@ def test_index_refuses_a_different_embedding_model(tmp_path):
     indexer.rechunk(conn, Named("model-b"), log=log)  # the documented way out
     assert db.get_meta(conn, "embed_model") == "model-b"
     indexer.run(conn, FakeTranscriber(), Named("model-b"), log=log)
+
+
+def test_unintelligible_audio_is_skipped_with_the_reason(tmp_path):
+    from whensaid.transcribe import Unintelligible
+
+    media = tmp_path / "media"
+    media.mkdir()
+    for n in ("english.mp4", "foreign.mp4"):
+        (media / n).write_bytes(b"x")
+    conn = db.connect(tmp_path / "q.db")
+    conn.execute("insert into roots values (?)", (str(media),))
+    log = open("/dev/null", "w")
+    calls = []
+
+    class T(FakeTranscriber):
+        def transcribe(self, path):
+            calls.append(path)
+            if "foreign" in path:
+                self.last_confidence = 0.46
+                raise Unintelligible("transcript unreliable (mean word confidence 0.46): probably not English, or not speech")
+            self.last_confidence = 0.97
+            return super().transcribe(path)
+
+    assert indexer.run(conn, T(), FakeEmbedder(), log=log) == {"done": 1, "no_audio": 0, "failed": 0, "skipped": 1}
+    got = {r["path"].rsplit("/", 1)[1]: (r["status"], r["confidence"], r["error"]) for r in conn.execute("select * from sources")}
+    assert got["english.mp4"] == ("done", 0.97, None)
+    assert got["foreign.mp4"][0] == "skipped" and "not English" in got["foreign.mp4"][2]
+    assert conn.execute("select count(*) from chunks").fetchone()[0] == 1  # nothing from the garbage transcript is searchable
+    calls.clear()
+    indexer.run(conn, T(), FakeEmbedder(), log=log)
+    assert calls == []  # an unchanged skipped file is not transcribed again
+
+
+def test_confidence_check_thresholds(monkeypatch):
+    from types import SimpleNamespace as W
+
+    import numpy as np
+
+    from whensaid import transcribe
+
+    def fake_pipe(p, n):
+        words = [W(start=i * 0.5, end=i * 0.5 + 0.4, word=" w", probability=p) for i in range(n)]
+        return SimpleNamespaceLike(words)
+
+    class SimpleNamespaceLike:
+        def __init__(self, words):
+            self.words = words
+
+        def transcribe(self, audio, **kw):
+            return [W(words=self.words, start=0, end=1, text="x")], None
+
+    monkeypatch.setattr("faster_whisper.audio.decode_audio", lambda path, sampling_rate: np.zeros(16000, dtype=np.float32))
+    t = transcribe.Transcriber(device="cpu", compute_type="int8", model="x")
+    t._pipe = fake_pipe(0.5, 100)
+    try:
+        t.transcribe("a.wav")
+        assert False, "low confidence over many words should be refused"
+    except transcribe.Unintelligible as e:
+        assert "0.50" in str(e)
+    t._pipe = fake_pipe(0.5, 10)  # too few words to judge
+    assert len(t.transcribe("a.wav")[0]) == 1 and t.last_confidence == 0.5
+    t._pipe = fake_pipe(0.95, 100)
+    assert t.transcribe("a.wav")[0] and abs(t.last_confidence - 0.95) < 1e-6
+    monkeypatch.setenv("WHENSAID_MIN_CONFIDENCE", "0")
+    t._pipe = fake_pipe(0.5, 100)
+    assert t.transcribe("a.wav")[0]  # check switched off

@@ -96,7 +96,7 @@ def test_index_uses_subtitles_only_when_asked_and_present(tmp_path):
                 raise AssertionError("should not transcribe a file that has subtitles")
             return Fake().transcribe(path)
 
-    assert indexer.run(conn, Either(), Emb(), log=log, use_subtitles=True) == {"done": 2, "no_audio": 0, "failed": 0}
+    assert indexer.run(conn, Either(), Emb(), log=log, use_subtitles=True) == {"done": 2, "no_audio": 0, "failed": 0, "skipped": 0}
     texts = [r[0] for r in conn.execute(
         "select group_concat(text, ' ') from segments s join sources o on o.id = s.source_id group by o.path order by o.path")]
     assert "Gradient & descent" in texts[0] and texts[1] == "from whisper"

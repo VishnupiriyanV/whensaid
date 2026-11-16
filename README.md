@@ -36,6 +36,8 @@ Indexing is only ever done by the `whensaid index` command, never by the agent.
 
 Web videos use their captions when there are any (seconds, no GPU) and are transcribed from the audio otherwise. Search results for them carry the title and a `link` that opens the video at that moment. Playlists and channels are checked for new videos at most once an hour. Use this for videos you are allowed to download; the site's terms still apply.
 
+Things that will never work are skipped once and not asked for again: live streams, private or removed videos, videos that are not in English, and recordings whose transcript the model itself was unsure of (usually another language, or music). `whensaid status` lists them with the reason; `whensaid index --retry-skipped` tries them again, and `WHENSAID_MIN_CONFIDENCE=0` turns the transcript check off.
+
 Set `WHENSAID_HOME` to keep the index somewhere other than `~/.whensaid`.
 
 ## How it works

@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from . import subtitles
@@ -18,6 +19,17 @@ from .paths import home
 
 class FetchError(Exception):
     pass
+
+
+class Skip(FetchError):
+    """This video will not work however often we try: live, private, another language."""
+
+
+LIVE = {"is_live": "a live stream", "is_upcoming": "not published yet", "post_live": "a stream that just ended, not processed yet"}
+# yt-dlp's wording for things that will not fix themselves. Anything else is treated as
+# temporary (network, rate limit, bot check) and retried on the next run.
+PERMANENT = ("private video", "video unavailable", "video is unavailable", "is not available", "has been removed", "members-only", "members only",
+             "confirm your age", "account associated with this video has been terminated", "not available in your country")
 
 
 def ytdlp_cmd() -> list[str]:
@@ -32,6 +44,22 @@ def ytdlp_cmd() -> list[str]:
     if found:
         return [found]
     raise FetchError("yt-dlp is not installed. Run: pip install 'whensaid[url]'")
+
+
+def is_english(code: str) -> bool:
+    return code == "en" or code.startswith(("en-", "en_"))
+
+
+def spoken_language(info: dict) -> str | None:
+    """What the site says is spoken. Its `language` field when there is one. Otherwise the
+    "-orig" caption tracks, but only when they agree: a video with dubbed audio lists one per
+    dub (22 on a real NASA video), which says nothing about the original."""
+    if info.get("language"):
+        return info["language"]
+    orig = {k[:-5] for k in (info.get("automatic_captions") or {}) if k.endswith("-orig")}
+    if any(is_english(k) for k in orig):
+        return "en"
+    return orig.pop() if len(orig) == 1 else None
 
 
 def choose_track(info: dict) -> tuple[str, str] | None:
@@ -52,21 +80,46 @@ def choose_track(info: dict) -> tuple[str, str] | None:
     return None
 
 
-class YtDlp:
-    def __init__(self, timeout: int = 900):
-        self.timeout = timeout
+FIRST_TRY = 45  # seconds before deciding the connection is stuck and trying again over IPv4
 
-    def _run(self, args: list[str], url: str | None = None) -> str:
-        cmd = ytdlp_cmd() + ["--no-warnings", "--ignore-config", *args]
+
+class YtDlp:
+    def __init__(self, timeout: int = 120, download_timeout: int = 1800):
+        self.timeout = timeout                    # listing a playlist, reading metadata, fetching captions
+        self.download_timeout = download_timeout  # pulling the audio of a video without captions
+        # set after a stall: networks with broken IPv6 hang python but not a browser. Remembered
+        # for a day so each command doesn't sit through the same stall again.
+        self._flag = home() / "ipv4"
+        self.ipv4 = self._flag.exists() and time.time() - self._flag.stat().st_mtime < 86400
+
+    def _run(self, args: list[str], url: str | None = None, timeout: int | None = None) -> str:
+        # the socket timeout makes a dead connection fail in seconds instead of holding the whole run
+        cmd = ytdlp_cmd() + ["--no-warnings", "--ignore-config", "--socket-timeout", "20", "--retries", "2", *args]
         if url:
             cmd += ["--", url]
+        limit = timeout or self.timeout
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+            if self.ipv4:
+                r = subprocess.run(cmd[:-2] + ["--force-ipv4"] + cmd[-2:] if url else cmd + ["--force-ipv4"],
+                                   capture_output=True, text=True, timeout=limit)
+            else:
+                try:
+                    # a healthy connection answers the first request well inside this
+                    r = subprocess.run(cmd, capture_output=True, text=True, timeout=min(limit, FIRST_TRY))
+                except subprocess.TimeoutExpired:
+                    if limit <= FIRST_TRY:
+                        raise
+                    self.ipv4 = True
+                    out = self._run(args, url, timeout)
+                    self._flag.touch()  # only once IPv4 really did work
+                    return out
         except subprocess.TimeoutExpired:
-            raise FetchError("yt-dlp timed out")
+            raise FetchError(f"yt-dlp gave no answer in {limit} s (slow or blocked connection?)")
         if r.returncode != 0:
             errs = [ln for ln in r.stderr.splitlines() if ln.startswith("ERROR")]
             last = errs[-1] if errs else (r.stderr.strip().splitlines() or ["yt-dlp failed"])[-1]
+            if any(p in last.lower() for p in PERMANENT):
+                raise Skip(last[:400])
             raise FetchError(last[:400])
         return r.stdout
 
@@ -100,11 +153,13 @@ class YtDlp:
         try:
             info = json.loads(self._run(["-J", "--skip-download", "--no-playlist"], url))
             duration = float(info.get("duration") or 0)
-            orig = [k for k in (info.get("automatic_captions") or {}) if k.endswith("-orig") and k != "en-orig"]
-            if orig and not info.get("subtitles", {}).get("en"):
+            if info.get("live_status") in LIVE:
+                raise Skip(LIVE[info["live_status"]])  # its captions are a moving window, not a recording
+            lang = spoken_language(info)
+            if lang and not is_english(lang):
                 # youtube offers a machine-translated English track for any language; that is not
                 # what was said, and whisper here is English-only, so don't pretend
-                raise FetchError(f"video is not in English (original language {orig[0][:-5]}); only English is supported so far")
+                raise Skip(f"not in English (original language {lang}); only English is supported so far")
             pick = choose_track(info)
             if pick:
                 kind, lang = pick
@@ -118,7 +173,8 @@ class YtDlp:
                     if segs:
                         return segs, max(duration, segs[-1].end), kind
             # no usable captions: take the audio, which pyav reads as it is (no ffmpeg needed)
-            self._run(["-f", "bestaudio/best", "--no-playlist", "-o", str(work / "%(id)s.%(ext)s")], url)
+            self._run(["-f", "bestaudio/best", "--no-playlist", "-o", str(work / "%(id)s.%(ext)s")], url,
+                      timeout=self.download_timeout)
             audio = next((p for p in work.iterdir() if p.suffix != ".vtt"), None)
             if audio is None:
                 raise FetchError("no captions and no audio could be downloaded")
@@ -134,4 +190,4 @@ def _entry(e: dict) -> dict:
     url = e.get("webpage_url") or e.get("url")
     if extractor == "youtube" and e.get("id"):
         url = f"https://www.youtube.com/watch?v={e['id']}"  # drop &list=, &t=, &si= so one video is one source
-    return {"key": f"{extractor}:{vid}", "url": url, "title": e.get("title")}
+    return {"key": f"{extractor}:{vid}", "url": url, "title": e.get("title"), "live": LIVE.get(e.get("live_status"))}
