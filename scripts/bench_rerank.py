@@ -1,6 +1,6 @@
 """Compare reranker variants for speed and accuracy on the golden sets.
 
-    HEARSAY_HOME=<home with everything indexed> python scripts/bench_rerank.py
+    WHENSAID_HOME=<home with everything indexed> python scripts/bench_rerank.py
 
 The fused keyword+semantic candidates are computed once per query, then each variant only
 reorders them, so differences between rows come from the reranker alone. Latency is measured
@@ -16,10 +16,10 @@ from pathlib import Path
 from fastembed.common.model_description import ModelSource
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 
-from hearsay import db, paths
-from hearsay.embed import Embedder
-from hearsay.paths import models_dir
-from hearsay.search import Searcher, rrf
+from whensaid import db, paths
+from whensaid.embed import Embedder
+from whensaid.paths import models_dir
+from whensaid.search import Searcher, rrf
 
 TESTS = Path(__file__).resolve().parent.parent / "tests"
 SETS = ["golden.json", "golden_noisy.json", "golden_scale.json"]
@@ -35,7 +35,7 @@ MODELS = {
 
 def load(name, threads):
     repo, file = MODELS[name]
-    custom = f"hearsay-bench/{name}"
+    custom = f"whensaid-bench/{name}"
     try:
         TextCrossEncoder.add_custom_model(model=custom, sources=ModelSource(hf=repo), model_file=file)
     except ValueError:

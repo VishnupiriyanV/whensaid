@@ -1,7 +1,7 @@
 import numpy as np
 
-from hearsay import db
-from hearsay.search import Searcher, fts_query, rrf
+from whensaid import db
+from whensaid.search import Searcher, fts_query, rrf
 
 
 def test_fts_query_quotes_and_drops_stopwords():

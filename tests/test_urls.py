@@ -3,10 +3,10 @@ import sqlite3
 import numpy as np
 import pytest
 
-from hearsay import db, export, fetch, indexer, paths, server, urls
-from hearsay.chunk import Segment
-from hearsay.search import Searcher
-from hearsay.util import deep_link
+from whensaid import db, export, fetch, indexer, paths, server, urls
+from whensaid.chunk import Segment
+from whensaid.search import Searcher
+from whensaid.util import deep_link
 
 LOG = open("/dev/null", "w")
 
@@ -131,7 +131,7 @@ def test_search_returns_title_and_a_link_that_opens_at_the_moment(conn, monkeypa
     hit = Searcher(conn, Emb(), query_prefix="").search("lighthouse", mode="keyword")[0]
     assert (hit.title, hit.url) == ("Video abc123", "https://www.youtube.com/watch?v=abc123")
     conn.commit()
-    monkeypatch.setenv("HEARSAY_HOME", str(tmp_path))
+    monkeypatch.setenv("WHENSAID_HOME", str(tmp_path))
     server._state.clear()
     server._state["conn"] = db.connect_readonly(tmp_path / "u.db")
     server._state["searcher"] = Searcher(server._state["conn"], Emb(), query_prefix="")
@@ -195,7 +195,7 @@ def test_server_notices_an_index_upgraded_while_it_runs(tmp_path):
     ro = db.connect_readonly(tmp_path / "m.db")
     s = Searcher(ro, Emb(), query_prefix="")
     assert s.search("lighthouse") == []  # old schema, nothing indexed, no error
-    w = db.connect(tmp_path / "m.db")  # a writer upgrades it, as `hearsay add-url` would
+    w = db.connect(tmp_path / "m.db")  # a writer upgrades it, as `whensaid add-url` would
     f = FakeFetcher()
     urls.add_url(w, f, "https://www.youtube.com/watch?v=abc123", log=LOG)
     indexer.run(w, Tr(), Emb(), log=LOG, fetcher=f)

@@ -1,4 +1,4 @@
-# hearsay-mcp
+# whensaid
 
 Search what was *said* in your local video and audio files, from your AI agent.
 
@@ -13,42 +13,42 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for what is next and [docs/PLAN.md](docs/
 
 ```bash
 uv venv && uv pip install -e ".[cuda]"      # drop [cuda] if you have no NVIDIA GPU
-hearsay models pull                         # one-off download, ~1.6 GB (whisper, embedder, reranker)
-hearsay add ~/Videos/talks                  # register a folder
-hearsay index                               # transcribe + index anything new or changed
-hearsay index --watch                       # or keep running and pick up new files (scans every 30 s)
-hearsay index --subtitles                   # use a .srt/.vtt next to a recording instead of transcribing it
-hearsay add-url https://www.youtube.com/playlist?list=...   # a video, playlist or channel (pip install 'hearsay-mcp[url]')
-hearsay remove ~/Videos/old                 # stop watching a folder, playlist or video and drop it from the index
-hearsay status
+whensaid models pull                         # one-off download, ~1.6 GB (whisper, embedder, reranker)
+whensaid add ~/Videos/talks                  # register a folder
+whensaid index                               # transcribe + index anything new or changed
+whensaid index --watch                       # or keep running and pick up new files (scans every 30 s)
+whensaid index --subtitles                   # use a .srt/.vtt next to a recording instead of transcribing it
+whensaid add-url https://www.youtube.com/playlist?list=...   # a video, playlist or channel (pip install 'whensaid[url]')
+whensaid remove ~/Videos/old                 # stop watching a folder, playlist or video and drop it from the index
+whensaid status
 ```
 
 Then give your agent the MCP server (stdio):
 
 ```bash
-claude mcp add hearsay -- /path/to/.venv/bin/hearsay serve
+claude mcp add whensaid -- /path/to/.venv/bin/whensaid serve
 ```
 
 Tools the agent gets (all read-only): `search`, `get_transcript`, `list_sources`, `index_status`.
-On CPU-only machines it uses the same model in int8 (about 6x realtime on 12 cores); `HEARSAY_WHISPER_MODEL=small.en` trades accuracy for speed.
-Indexing is only ever done by the `hearsay index` command, never by the agent.
-`hearsay index` also drops files that were deleted or moved (unless their folder is missing or holds no media at all, which looks like an unplugged drive). With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
+On CPU-only machines it uses the same model in int8 (about 6x realtime on 12 cores); `WHENSAID_WHISPER_MODEL=small.en` trades accuracy for speed.
+Indexing is only ever done by the `whensaid index` command, never by the agent.
+`whensaid index` also drops files that were deleted or moved (unless their folder is missing or holds no media at all, which looks like an unplugged drive). With `--watch`, files are indexed once they have stopped changing for 15 s, and a file that failed is retried only after it changes.
 
 Web videos use their captions when there are any (seconds, no GPU) and are transcribed from the audio otherwise. Search results for them carry the title and a `link` that opens the video at that moment. Playlists and channels are checked for new videos at most once an hour. Use this for videos you are allowed to download; the site's terms still apply.
 
-Set `HEARSAY_HOME` to keep the index somewhere other than `~/.hearsay`.
+Set `WHENSAID_HOME` to keep the index somewhere other than `~/.whensaid`.
 
 ## How it works
 
 ffmpeg-free decode (PyAV) -> faster-whisper with VAD and word timestamps -> ~45 s overlapping
 chunks -> bge-small embeddings -> one SQLite file (FTS5 keyword index + vectors).
-Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about half a second per search on CPU; `HEARSAY_RERANK=0` skips it). Passages it scores as unrelated are dropped, so off-topic questions usually return nothing, and borderline hits come back marked `weak` (`HEARSAY_MIN_RELEVANCE` tunes this, `off` disables).
+Search fuses keyword and vector ranks (reciprocal rank fusion), then a small cross-encoder reranks the top 20 (about half a second per search on CPU; `WHENSAID_RERANK=0` skips it). Passages it scores as unrelated are dropped, so off-topic questions usually return nothing, and borderline hits come back marked `weak` (`WHENSAID_MIN_RELEVANCE` tunes this, `off` disables).
 
 ## Develop
 
 ```bash
 uv pip install -e ".[dev]" && pytest
-HEARSAY_HOME=<index with tests/data indexed> python scripts/eval.py --verbose
+WHENSAID_HOME=<index with tests/data indexed> python scripts/eval.py --verbose
 ```
 
 Test media is public domain and not checked in; see [tests/data/README.md](tests/data/README.md).

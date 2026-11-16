@@ -1,6 +1,6 @@
 from types import SimpleNamespace as NS
 
-from hearsay.transcribe import split_on_gaps
+from whensaid.transcribe import split_on_gaps
 
 
 def w(word, start, end):

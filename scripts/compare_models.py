@@ -1,6 +1,6 @@
 """Try other embedding models and rerankers on the golden set, without touching the index.
 
-    HEARSAY_HOME=<home> python scripts/compare_models.py --embedders bge-base,gte-base --rerankers jina-turbo
+    WHENSAID_HOME=<home> python scripts/compare_models.py --embedders bge-base,gte-base --rerankers jina-turbo
 
 Chunks are re-embedded in memory for each candidate. Hybrid is keyword + semantic fused with
 rrf as in the real searcher, and a reranker (if given) reorders the top 20 of that.
@@ -15,8 +15,8 @@ import numpy as np
 from fastembed import TextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 
-from hearsay import db, paths
-from hearsay.search import Searcher, rrf
+from whensaid import db, paths
+from whensaid.search import Searcher, rrf
 
 GOLDEN = Path(__file__).resolve().parent.parent / "tests" / "golden.json"
 BGE = "Represent this sentence for searching relevant passages: "

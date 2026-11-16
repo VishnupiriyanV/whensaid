@@ -31,7 +31,7 @@ def ytdlp_cmd() -> list[str]:
     found = shutil.which("yt-dlp")
     if found:
         return [found]
-    raise FetchError("yt-dlp is not installed. Run: pip install 'hearsay-mcp[url]'")
+    raise FetchError("yt-dlp is not installed. Run: pip install 'whensaid[url]'")
 
 
 def choose_track(info: dict) -> tuple[str, str] | None:

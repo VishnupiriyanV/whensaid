@@ -1,4 +1,4 @@
-from hearsay.chunk import Segment, make_chunks
+from whensaid.chunk import Segment, make_chunks
 
 
 def segs(n, length=5.0):

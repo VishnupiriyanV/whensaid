@@ -1,8 +1,8 @@
 import numpy as np
 
-from hearsay import db, indexer
-from hearsay.chunk import Segment
-from hearsay.transcribe import NoAudio
+from whensaid import db, indexer
+from whensaid.chunk import Segment
+from whensaid.transcribe import NoAudio
 
 
 class FakeTranscriber:
@@ -50,7 +50,7 @@ def test_run_and_reindex(tmp_path):
 
 
 def test_second_indexer_is_refused(tmp_path, monkeypatch):
-    monkeypatch.setenv("HEARSAY_HOME", str(tmp_path))
+    monkeypatch.setenv("WHENSAID_HOME", str(tmp_path))
     with indexer.index_lock():
         try:
             with indexer.index_lock():
@@ -181,7 +181,7 @@ class Named(FakeEmbedder):
 
 def test_index_refuses_a_different_embedding_model(tmp_path):
     import pytest
-    from hearsay.search import Searcher
+    from whensaid.search import Searcher
 
     media, conn, log = indexed(tmp_path)
     indexer.run(conn, FakeTranscriber(), Named("model-a"), log=log)  # first named run claims the index

@@ -6,7 +6,7 @@ from .paths import models_dir
 # The int8 file of the same model: same ranking on our query sets, under half the time on cpu.
 REPO = "Xenova/ms-marco-MiniLM-L-12-v2"
 MODEL_FILE = "onnx/model_quantized.onnx"
-MODEL = "hearsay/ms-marco-MiniLM-L-12-v2-q"
+MODEL = "whensaid/ms-marco-MiniLM-L-12-v2-q"
 # More threads made it slower here: the embedder has its own pool and they fight for cores.
 THREADS = min(4, os.cpu_count() or 1)
 
@@ -44,14 +44,14 @@ class Reranker:
 
 def load_reranker():
     """The reranker if its model is on disk, otherwise None and search runs without it.
-    HEARSAY_RERANK=0 turns it off."""
-    if os.environ.get("HEARSAY_RERANK") == "0":
+    WHENSAID_RERANK=0 turns it off."""
+    if os.environ.get("WHENSAID_RERANK") == "0":
         return None
     r = Reranker()
     try:
         r._load()
     except Exception:
-        print("hearsay: reranker model not found, run `hearsay models pull`; searching without it", file=sys.stderr)
+        print("whensaid: reranker model not found, run `whensaid models pull`; searching without it", file=sys.stderr)
         return None
     return r
 
@@ -73,8 +73,8 @@ def strength(relevance: float | None) -> str | None:
 
 
 def min_relevance() -> float | None:
-    """HEARSAY_MIN_RELEVANCE overrides the default; 'off' disables the cutoff."""
-    v = os.environ.get("HEARSAY_MIN_RELEVANCE")
+    """WHENSAID_MIN_RELEVANCE overrides the default; 'off' disables the cutoff."""
+    v = os.environ.get("WHENSAID_MIN_RELEVANCE")
     if v is None:
         return DEFAULT_MIN_RELEVANCE
     return None if v.lower() == "off" else float(v)

@@ -1,6 +1,6 @@
 """Score retrieval against tests/golden.json.
 
-    HEARSAY_HOME=<home with the test files indexed> python scripts/eval.py [--modes keyword,semantic,hybrid]
+    WHENSAID_HOME=<home with the test files indexed> python scripts/eval.py [--modes keyword,semantic,hybrid]
 
 A hit counts if a returned chunk is from the right file and overlaps the expected window.
 """
@@ -10,10 +10,10 @@ import os
 import sys
 from pathlib import Path
 
-from hearsay import db, paths
-from hearsay.embed import Embedder
-from hearsay.rerank import Reranker
-from hearsay.search import BGE_QUERY_PREFIX, Searcher
+from whensaid import db, paths
+from whensaid.embed import Embedder
+from whensaid.rerank import Reranker
+from whensaid.search import BGE_QUERY_PREFIX, Searcher
 
 GOLDEN = Path(os.environ.get("GOLDEN", Path(__file__).resolve().parent.parent / "tests" / "golden.json"))
 

@@ -3,13 +3,13 @@ from pathlib import Path
 
 
 def home() -> Path:
-    p = Path(os.environ.get("HEARSAY_HOME") or Path.home() / ".hearsay")
+    p = Path(os.environ.get("WHENSAID_HOME") or Path.home() / ".whensaid")
     p.mkdir(parents=True, exist_ok=True)
     return p
 
 
 def db_path() -> Path:
-    return home() / "hearsay.db"
+    return home() / "whensaid.db"
 
 
 def models_dir() -> Path:

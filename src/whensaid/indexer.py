@@ -38,7 +38,7 @@ def claim_embed_model(conn, embedder) -> None:
     elif have != name:
         raise ModelChanged(
             f"this index was embedded with {have}, but the embedder is now {name}. "
-            "Run `hearsay rechunk` to re-embed everything with the new model."
+            "Run `whensaid rechunk` to re-embed everything with the new model."
         )
 
 

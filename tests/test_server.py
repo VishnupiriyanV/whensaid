@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
-from hearsay import db, paths, server
-from hearsay.search import Searcher
+from whensaid import db, paths, server
+from whensaid.search import Searcher
 
 
 class TinyEmbedder:
@@ -18,7 +18,7 @@ class TinyEmbedder:
 
 @pytest.fixture
 def home(tmp_path, monkeypatch):
-    monkeypatch.setenv("HEARSAY_HOME", str(tmp_path))
+    monkeypatch.setenv("WHENSAID_HOME", str(tmp_path))
     server._state.clear()
     yield tmp_path
     server._state.clear()
@@ -47,7 +47,7 @@ def use_fake_embedder():
 
 
 def test_nothing_indexed_gives_a_helpful_error(home):
-    with pytest.raises(ToolError, match="hearsay add"):
+    with pytest.raises(ToolError, match="whensaid add"):
         server.search("anything")
 
 
@@ -115,7 +115,7 @@ def test_underscore_in_a_file_name_is_not_a_wildcard(home):
 
 
 def test_weak_matches_are_labelled(home, monkeypatch):
-    from hearsay import rerank
+    from whensaid import rerank
 
     assert rerank.strength(None) is None
     assert rerank.strength(-5.1) == "weak" and rerank.strength(-4.9) == "strong"

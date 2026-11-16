@@ -34,7 +34,7 @@ def cmd_index(args):
                 return
             counts = run(conn, Transcriber(), Embedder(), use_subtitles=args.subtitles, fetcher=YtDlp())
     except AlreadyRunning:
-        sys.exit("another hearsay index is already running")
+        sys.exit("another whensaid index is already running")
     except ModelChanged as e:
         sys.exit(str(e))
     print(counts)
@@ -49,7 +49,7 @@ def cmd_add_url(args):
         r = add_url(conn, YtDlp(), args.url, limit=args.limit, no_playlist=args.no_playlist)
     except FetchError as e:
         sys.exit(f"could not read {args.url}: {e}")
-    print(f"run `hearsay index` to fetch {r['new']} new videos" if r["new"] else "nothing new to fetch")
+    print(f"run `whensaid index` to fetch {r['new']} new videos" if r["new"] else "nothing new to fetch")
 
 
 def cmd_remove(args):
@@ -61,7 +61,7 @@ def cmd_remove(args):
         with index_lock():
             n = remove_url(conn, args.folder) if args.folder.startswith(("http://", "https://")) else remove_root(conn, args.folder)
     except AlreadyRunning:
-        sys.exit("another hearsay index is already running")
+        sys.exit("another whensaid index is already running")
     print(f"removed {n} files from the index (the recordings themselves are untouched)")
 
 
@@ -74,7 +74,7 @@ def cmd_rechunk(args):
         with index_lock():
             rechunk(conn, Embedder())
     except AlreadyRunning:
-        sys.exit("another hearsay index is already running")
+        sys.exit("another whensaid index is already running")
 
 
 def cmd_export(args):
@@ -100,7 +100,7 @@ def cmd_search(args):
     try:
         conn = db.connect_readonly(paths.db_path())
     except FileNotFoundError:
-        sys.exit("nothing indexed yet: hearsay add <folder>, then hearsay index")
+        sys.exit("nothing indexed yet: whensaid add <folder>, then whensaid index")
     try:
         hits = Searcher(conn, Embedder(), reranker=load_reranker(), min_relevance=min_relevance()).search(args.query, limit=args.limit)
     except RuntimeError as e:
@@ -157,7 +157,7 @@ def cmd_models_pull(args):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="hearsay")
+    p = argparse.ArgumentParser(prog="whensaid")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("add", help="register a folder of recordings")
@@ -182,7 +182,7 @@ def main(argv=None):
     sub.add_parser("rechunk", help="rebuild chunks and embeddings from stored transcripts").set_defaults(fn=cmd_rechunk)
     e = sub.add_parser("export", help="write transcripts as text files an agent can grep")
     e.add_argument("--format", choices=["txt", "srt"], default="txt")
-    e.add_argument("--out", help="folder to write into (default: ~/.hearsay/transcripts)")
+    e.add_argument("--out", help="folder to write into (default: ~/.whensaid/transcripts)")
     e.add_argument("--beside", action="store_true", help="write next to each recording instead")
     e.add_argument("--overwrite", action="store_true", help="with --beside: replace files that are already there")
     e.set_defaults(fn=cmd_export)

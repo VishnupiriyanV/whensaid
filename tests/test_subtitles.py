@@ -1,6 +1,6 @@
 import numpy as np
 
-from hearsay import db, indexer, subtitles
+from whensaid import db, indexer, subtitles
 
 SRT = """1
 00:00:01,000 --> 00:00:03,500
@@ -71,7 +71,7 @@ class Boom:
 
 class Fake:
     def transcribe(self, path):
-        from hearsay.chunk import Segment
+        from whensaid.chunk import Segment
         return [Segment(0, 3, "from whisper")], 3.0
 
 

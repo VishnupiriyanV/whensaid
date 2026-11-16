@@ -24,12 +24,12 @@ empty result (it comes with a note) means the recordings most likely don't cover
 so rather than guessing. Each hit has `match`: "strong" or "weak". A weak hit is often off-topic,
 so check its text before using it; when even the best hit is weak the result says so in `note`.
 `relevance` is the reranker score behind that (higher is better), `similarity` is cosine similarity. If `search` says nothing is indexed, tell the user to
-run `hearsay add <folder>` and `hearsay index`.
+run `whensaid add <folder>` and `whensaid index`.
 """
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
 
-mcp = MCPServer("hearsay", instructions=INSTRUCTIONS)
+mcp = MCPServer("whensaid", instructions=INSTRUCTIONS)
 
 _lock = threading.Lock()  # sync tools run on worker threads and share one connection
 _state: dict = {}
@@ -40,7 +40,7 @@ def _conn():
         try:
             _state["conn"] = db.connect_readonly(paths.db_path())
         except FileNotFoundError:
-            raise ToolError("Nothing is indexed yet. Run `hearsay add <folder>` then `hearsay index`.")
+            raise ToolError("Nothing is indexed yet. Run `whensaid add <folder>` then `whensaid index`.")
     return _state["conn"]
 
 
@@ -93,7 +93,7 @@ def search(
             raise ToolError(str(e))
         total = _conn().execute("select count(*) from chunks").fetchone()[0]
     if total == 0:
-        raise ToolError("Nothing is indexed yet. Run `hearsay add <folder>` then `hearsay index`.")
+        raise ToolError("Nothing is indexed yet. Run `whensaid add <folder>` then `whensaid index`.")
     out = {
         "query": query,
         "results": [

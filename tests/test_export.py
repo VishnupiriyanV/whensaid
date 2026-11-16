@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from hearsay import db, export
-from hearsay.util import timecode
+from whensaid import db, export
+from whensaid.util import timecode
 
 
 def test_timecode_formats():

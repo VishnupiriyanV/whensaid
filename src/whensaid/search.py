@@ -77,7 +77,7 @@ class Searcher:
         if built_with and using and built_with != using:
             raise RuntimeError(
                 f"The index was embedded with {built_with} but search is using {using}. "
-                "Run `hearsay rechunk` to re-embed."
+                "Run `whensaid rechunk` to re-embed."
             )
         rows = self.conn.execute("select id, embedding from chunks where embedding is not null").fetchall()
         self._ids = np.array([r["id"] for r in rows], dtype=np.int64)
