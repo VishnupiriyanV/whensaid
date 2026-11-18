@@ -26,3 +26,33 @@ def test_no_words_falls_back_to_segment_text():
     fb = NS(start=3.0, end=5.0, text="  hello  ")
     assert split_on_gaps([], fallback=fb)[0].text == "hello"
     assert split_on_gaps([], fallback=NS(start=0, end=1, text="  ")) == []
+
+
+def test_no_cuda_extra_installed_does_not_crash(monkeypatch):
+    import importlib.util
+
+    from whensaid import cudalibs
+
+    real = importlib.util.find_spec
+
+    def find_spec(name, *a):  # what python does when the parent package "nvidia" does not exist
+        if name.startswith("nvidia"):
+            raise ModuleNotFoundError("No module named 'nvidia'")
+        return real(name, *a)
+
+    monkeypatch.setattr(importlib.util, "find_spec", find_spec)
+    cudalibs.preload()  # used to raise
+
+
+def test_gpu_without_its_libraries_falls_back_to_cpu(monkeypatch, capsys):
+    import sys
+    import types
+
+    from whensaid import cudalibs, transcribe
+
+    monkeypatch.setitem(sys.modules, "ctranslate2", types.SimpleNamespace(get_cuda_device_count=lambda: 1))
+    monkeypatch.setattr(cudalibs, "libs_load", lambda: False)
+    assert transcribe.pick_device()[:2] == ("cpu", "int8")
+    assert "whensaid[cuda]" in capsys.readouterr().err
+    monkeypatch.setattr(cudalibs, "libs_load", lambda: True)
+    assert transcribe.pick_device()[:2] == ("cuda", "float16")

@@ -18,7 +18,11 @@ def pick_device() -> tuple[str, str, str]:
     try:
         import ctranslate2
         if ctranslate2.get_cuda_device_count() > 0:
-            return "cuda", "float16", model
+            if cudalibs.libs_load():
+                return "cuda", "float16", model
+            # a GPU is there but its CUDA 12 libraries are not: say so once and carry on with the cpu
+            print("whensaid: NVIDIA GPU found but the CUDA 12 libraries are missing, using the CPU "
+                  "(slower). For the GPU: pip install 'whensaid[cuda]'", file=sys.stderr)
     except Exception:
         pass
     return "cpu", "int8", model
