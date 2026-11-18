@@ -37,7 +37,7 @@ def checks() -> list[tuple[str, str, str, str]]:
         add(OK, "gpu", f"{gpus} NVIDIA GPU, CUDA 12 libraries found")
     elif gpus:
         add(WARN, "gpu", "an NVIDIA GPU is there but the CUDA 12 libraries are not: transcribing on the CPU (about 3x slower)",
-            "pip install 'whensaid[cuda]'")
+            "pip install 'whensaid[cuda]'   (with uvx: uvx --from 'whensaid[cuda]' whensaid ...)")
     else:
         add(OK, "gpu", f"no NVIDIA GPU, transcribing on the CPU ({os.cpu_count()} cores)")
 

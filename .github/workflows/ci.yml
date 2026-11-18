@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.12"]
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+
+  # Installs the package as a user would (no GPU extras), downloads the real models and
+  # searches a real clip. Slow and heavy, so only on main and by hand. macOS minutes count
+  # ten times on a private repo.
+  smoke:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    env:
+      WHENSAID_HOME: ${{ github.workspace }}/.smoke-home
+      WHENSAID_WHISPER_MODEL: small.en   # the default model is 1.5 GB; this one is enough to find a phrase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/cache@v4
+        with:
+          path: .smoke-home/models
+          key: models-${{ runner.os }}-small.en-v1
+      - run: pip install .
+      - run: python scripts/smoke.py tests/data

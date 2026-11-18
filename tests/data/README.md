@@ -1,6 +1,7 @@
 # Test data
 
-Media files here are git-ignored (see `.gitignore`); this file records where they came from
+Media files here are git-ignored (see `.gitignore`) except `jfk.wav`, which CI uses for its smoke test (US government
+work, 11 s, 344 KB); this file records where they came from
 so anyone can fetch them again. All are from archive.org.
 
 | File | Source item | Length | Rights as stated on archive.org |

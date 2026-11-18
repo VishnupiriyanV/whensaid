@@ -10,3 +10,4 @@ tests/data/**/*.mp4
 tests/data/**/*.mkv
 tests/data/**/*.wav
 tests/data/**/*.mp3
+!tests/data/jfk.wav

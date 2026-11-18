@@ -32,6 +32,12 @@ def present(kind: str) -> bool:
     if kind not in SIZES:
         raise ValueError(f"unknown model kind {kind!r}")
     try:
+        from loguru import logger  # fastembed logs "ERROR ... could not find the model" for a plain "not there yet"
+
+        logger.disable("fastembed")
+    except ImportError:
+        logger = None
+    try:
         if kind == "whisper":
             from faster_whisper.utils import download_model
 
@@ -48,6 +54,9 @@ def present(kind: str) -> bool:
         return True
     except Exception:  # fastembed raises ValueError for "not on disk", hf raises various things
         return False
+    finally:
+        if logger is not None:
+            logger.enable("fastembed")
 
 
 @contextlib.contextmanager
