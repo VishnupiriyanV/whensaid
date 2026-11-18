@@ -135,9 +135,9 @@ def cmd_search(args):
     elif strength(hits[0].relevance) == "weak":
         print("only weak matches, the recordings may not cover this:")
     for h in hits:
-        mark = {"weak": "weak  ", "strong": "      "}.get(strength(h.relevance), "      ")
+        mark = {"weak": "weak    ", "strong": "strong  "}.get(strength(h.relevance), "        ")
         where = deep_link(h.url, h.start) or timecode(h.start)
-        print(f"{mark}{h.title or os.path.basename(h.path)}  {where}  {h.text[:200]}")
+        print(f"{mark}{h.title or os.path.basename(h.path)}  {where}  {h.text}")
 
 
 def cmd_serve(args):
