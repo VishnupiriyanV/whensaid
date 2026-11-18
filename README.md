@@ -12,21 +12,24 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for what is next and [docs/PLAN.md](docs/
 ## Use it
 
 ```bash
-uv venv && uv pip install -e ".[cuda]"      # drop [cuda] if you have no NVIDIA GPU
-whensaid models pull                         # one-off download, ~1.6 GB (whisper, embedder, reranker)
-whensaid add ~/Videos/talks                  # register a folder
-whensaid index                               # transcribe + index anything new or changed
-whensaid index --watch                       # or keep running and pick up new files (scans every 30 s)
-whensaid index --subtitles                   # use a .srt/.vtt next to a recording instead of transcribing it
-whensaid add-url https://www.youtube.com/playlist?list=...   # a video, playlist or channel (pip install 'whensaid[url]')
-whensaid remove ~/Videos/old                 # stop watching a folder, playlist or video and drop it from the index
+pip install -e ".[url]"                     # from a clone, until it is on PyPI. Add cuda on an NVIDIA GPU: ".[cuda,url]"
+whensaid doctor                             # checks the GPU, models, yt-dlp and the index, says how to fix problems
+whensaid add ~/Videos/talks                 # register a folder of recordings
+whensaid add-url https://www.youtube.com/playlist?list=...   # or a video, playlist or channel
+whensaid index                              # transcribe and index what is new (models download on first use)
+whensaid index --watch                      # or keep running and pick up new files every 30 s
+whensaid index --subtitles                  # use a .srt/.vtt next to a recording instead of transcribing it
+whensaid remove ~/Videos/old                # stop watching a folder, playlist or video and drop it from the index
 whensaid status
 ```
+
+The models (about 1.6 GB for the default set) are downloaded the first time they are needed. `whensaid models pull`
+fetches them ahead of time, and `WHENSAID_OFFLINE=1` forbids any download.
 
 Then give your agent the MCP server (stdio):
 
 ```bash
-claude mcp add whensaid -- /path/to/.venv/bin/whensaid serve
+claude mcp add whensaid -- whensaid serve
 ```
 
 Tools the agent gets (all read-only): `search`, `get_transcript`, `list_sources`, `index_status`.

@@ -9,6 +9,11 @@ from .paths import models_dir
 
 # rough sizes, only for the message shown before a download
 SIZES = {"whisper": "1.5 GB", "embedder": "70 MB", "reranker": "35 MB"}
+WHISPER_SIZES = {"distil-large-v3": "1.5 GB", "small.en": "0.5 GB", "tiny.en": "75 MB", "base.en": "150 MB"}
+
+
+def size_label(kind: str) -> str:
+    return WHISPER_SIZES.get(whisper_name(), "large") if kind == "whisper" else SIZES[kind]
 SEARCH = ("embedder", "reranker")  # what `search` and the server need
 INDEX = ("whisper", "embedder")    # what `index` needs
 
@@ -80,7 +85,7 @@ def download(kinds, log=sys.stderr) -> None:
     os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "30")
     with ipv4_only():
         for kind in kinds:
-            print(f"downloading the {kind} model ({SIZES[kind]}) ...", file=log, flush=True)
+            print(f"downloading the {kind} model ({size_label(kind)}) ...", file=log, flush=True)
             if kind == "whisper":
                 from faster_whisper.utils import download_model
 
@@ -161,6 +166,6 @@ class Prep:
         if self.error:
             return (f"The search models could not be downloaded ({self.error}). Tell the user to run "
                     "`whensaid models pull` in a terminal.")
-        left = [f"{k} ({SIZES[k]})" for k, v in self.state.items() if v != "ready"]
+        left = [f"{k} ({size_label(k)})" for k, v in self.state.items() if v != "ready"]
         return ("The search models are still downloading the first time: " + ", ".join(left) +
                 ". Try again in a minute.")

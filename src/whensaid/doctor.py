@@ -51,7 +51,7 @@ def checks() -> list[tuple[str, str, str, str]]:
             if free < need * 1.5:
                 add(FAIL, f"{kind} model", f"missing, and only {free:.1f} GB free in {paths.models_dir()}", "free some disk space")
             else:
-                add(WARN, f"{kind} model", f"not downloaded yet ({models.SIZES[kind]}), fetched on first use",
+                add(WARN, f"{kind} model", f"not downloaded yet ({models.size_label(kind)}), fetched on first use",
                     "whensaid models pull" if not models.offline() else "offline mode is on: run `whensaid models pull` once online")
     if (paths.home() / "ipv4").exists():
         add(OK, "network", "downloads use IPv4 only (a stalled IPv6 route was found earlier)")
