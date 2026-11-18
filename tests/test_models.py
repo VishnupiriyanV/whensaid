@@ -160,3 +160,113 @@ def test_server_waits_for_models_and_only_then_builds_a_searcher_with_the_rerank
         server._searcher()
     assert "models pull" in str(e.value)  # a failed reranker is an error, not a silent search without it
     server._state.clear()
+
+
+def test_download_goes_normally_first_then_ipv4_and_remembers(tmp_path, monkeypatch):
+    import io
+
+    monkeypatch.setenv("WHENSAID_HOME", str(tmp_path))
+    monkeypatch.delenv("HF_HUB_DISABLE_XET", raising=False)
+    calls = []
+
+    def fetch(kinds, log):
+        calls.append(models._ACTIVE["v4"])
+        if not models._ACTIVE["v4"]:
+            raise OSError("read timed out")  # the stalled IPv6 route
+
+    monkeypatch.setattr(models, "_fetch", fetch)
+    monkeypatch.setattr(models, "ipv6_broken", lambda *a, **k: False)  # the probe sees nothing wrong
+    log = io.StringIO()
+    models.download(["embedder"], log)
+    assert calls == [False, True]  # normal first, then IPv4 only
+    assert "trying again over IPv4" in log.getvalue()
+    assert (tmp_path / "ipv4").exists()  # remembered, shared with the yt-dlp path
+    import os
+
+    assert os.environ["HF_HUB_DISABLE_XET"] == "1"  # the Rust downloader would bypass the filter
+
+    calls.clear()
+    models.download(["embedder"], io.StringIO())
+    assert calls == [True]  # next time: straight to IPv4, no second stall
+
+    calls.clear()
+    (tmp_path / "ipv4").unlink()
+    monkeypatch.setattr(models, "_fetch", lambda kinds, log: calls.append(models._ACTIVE["v4"]))
+    monkeypatch.setattr(models, "ipv6_broken", lambda *a, **k: False)
+    models.download(["embedder"], io.StringIO())
+    assert calls == [False]  # a healthy network never touches IPv4-only
+    assert not (tmp_path / "ipv4").exists()
+
+
+def test_download_fails_with_the_last_error_when_both_ways_fail(tmp_path, monkeypatch):
+    import io
+
+    monkeypatch.setenv("WHENSAID_HOME", str(tmp_path))
+
+    def fetch(kinds, log):
+        raise OSError("no route to host")
+
+    monkeypatch.setattr(models, "_fetch", fetch)
+    monkeypatch.setattr(models, "ipv6_broken", lambda *a, **k: False)
+    with pytest.raises(OSError, match="no route"):
+        models.download(["embedder"], io.StringIO())
+    assert not (tmp_path / "ipv4").exists()  # nothing worked, nothing to remember
+    assert models._ACTIVE["v4"] is False
+
+
+def test_the_live_download_timeouts_are_set_even_after_huggingface_hub_was_imported():
+    from huggingface_hub import constants
+
+    constants.HF_HUB_DOWNLOAD_TIMEOUT = 10
+    models._set_timeouts()
+    assert constants.HF_HUB_DOWNLOAD_TIMEOUT == 30
+
+
+def test_a_dead_ipv6_route_is_noticed_before_any_stall(tmp_path, monkeypatch):
+    import io
+
+    monkeypatch.setenv("WHENSAID_HOME", str(tmp_path))
+    monkeypatch.setattr(models, "ipv6_broken", lambda *a, **k: True)
+    calls = []
+    monkeypatch.setattr(models, "_fetch", lambda kinds, log: calls.append(models._ACTIVE["v4"]))
+    log = io.StringIO()
+    models.download(["embedder"], log)
+    assert calls == [True]  # straight to IPv4 only, no attempt that would hang
+    assert "IPv6 route" in log.getvalue() and (tmp_path / "ipv4").exists()
+
+
+def test_ipv6_probe_cases(monkeypatch):
+    import errno
+
+    class Sock:
+        def __init__(self, family, kind, ok):
+            self.family, self.ok = family, ok
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+        def settimeout(self, t):
+            pass
+
+        def connect(self, addr):
+            if not self.ok[self.family]:
+                raise TimeoutError(errno.ETIMEDOUT, "timed out")
+
+    def probe(have, ok):
+        def getaddrinfo(host, port, family, type):
+            if family not in have:
+                raise socket.gaierror("no address")
+            return [(family, type, 6, "", ("addr", port))]
+
+        monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+        monkeypatch.setattr(socket, "socket", lambda family, kind: Sock(family, kind, ok))
+        return models.ipv6_broken()
+
+    both = {socket.AF_INET, socket.AF_INET6}
+    assert probe(both, {socket.AF_INET: True, socket.AF_INET6: True}) is False   # healthy
+    assert probe(both, {socket.AF_INET: True, socket.AF_INET6: False}) is True   # the broken-route case
+    assert probe({socket.AF_INET}, {socket.AF_INET: True}) is False              # no IPv6 at all
+    assert probe(both, {socket.AF_INET: False, socket.AF_INET6: False}) is False  # offline: not an IPv6 problem
