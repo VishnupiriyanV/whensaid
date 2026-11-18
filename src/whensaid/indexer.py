@@ -263,6 +263,25 @@ def rechunk(conn, embedder, log=sys.stderr) -> int:
     return len(ids)
 
 
+def _progress(log):
+    """A callback for the transcriber: one line per 10% of a long file, so a three hour film
+    is not silent for ten minutes. Short files finish before anyone wonders."""
+    from .util import timecode
+
+    state = {"step": -1}
+
+    def cb(done, total):
+        if total < 300:
+            return
+        step = int(min(done / total, 1.0) * 10)
+        if step > state["step"]:
+            state["step"] = step
+            print(f"    {step * 10:3d}%  {timecode(done)} of {timecode(total)}", file=log, flush=True)
+
+    cb.reset = lambda: state.update(step=-1)
+    return cb
+
+
 WEB_PAUSE = 3.0  # seconds between two web videos; each one costs a few yt-dlp requests
 
 
@@ -281,7 +300,11 @@ def run(conn, transcriber, embedder, log=sys.stderr, settle: float = 0, retry_fa
     counts = {"done": 0, "no_audio": 0, "failed": 0, "skipped": 0}
     last_was_web = False
     web = set(urls.pending(conn)) if fetcher is not None else set()
+    progress = _progress(log)
+    if hasattr(transcriber, "on_progress"):
+        transcriber.on_progress = progress
     for i, path in enumerate(todo, 1):
+        progress.reset()
         if path in web and last_was_web:
             time.sleep(WEB_PAUSE)
         last_was_web = path in web

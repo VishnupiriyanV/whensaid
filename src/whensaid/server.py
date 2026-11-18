@@ -45,6 +45,11 @@ def _conn():
 
 
 def _searcher() -> Searcher:
+    prep = _state.get("prep")
+    if prep is not None and not prep.ready():
+        # never build the searcher around a model that is still downloading: it would run without
+        # the reranker (no weak labels, no cutoff) until the server restarts, and nobody would see it
+        raise ToolError(prep.message())
     if "searcher" not in _state:
         from .embed import Embedder
         from .rerank import load_reranker, min_relevance
@@ -183,7 +188,9 @@ def index_status() -> dict:
             "select status, count(*) n from sources where status != 'removed' group by status")}
         failed = conn.execute("select path, error from sources where status = 'failed' limit 5").fetchall()
         chunks = conn.execute("select count(*) from chunks").fetchone()[0]
+    prep = _state.get("prep")
     return {
+        "models": prep.describe() if prep is not None else None,
         "indexer_running": indexer_running(),
         "files": counts,
         "chunks": chunks,
@@ -193,6 +200,13 @@ def index_status() -> dict:
 
 def main():
     # stdout belongs to the protocol, anything we print has to go to stderr
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    import logging
+
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # one log line per request otherwise
+    from .models import Prep
+
+    _state["prep"] = Prep().start()  # first use: download in the background, answer "still downloading" meanwhile
     mcp.run("stdio")
 
 

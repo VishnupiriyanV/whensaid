@@ -22,6 +22,12 @@ def cmd_index(args):
     from .indexer import AlreadyRunning, ModelChanged, index_lock, run, watch
     from .transcribe import Transcriber
 
+    from . import models
+
+    try:
+        models.ensure(models.INDEX)
+    except models.ModelsMissing as e:
+        sys.exit(str(e))
     conn = db.connect(paths.db_path())
     try:
         with index_lock():
@@ -101,10 +107,16 @@ def cmd_search(args):
     from .search import Searcher
     from .util import deep_link, timecode
 
+    from . import models
+
     try:
         conn = db.connect_readonly(paths.db_path())
     except FileNotFoundError:
         sys.exit("nothing indexed yet: whensaid add <folder>, then whensaid index")
+    try:
+        models.ensure(models.wanted_for_search())
+    except models.ModelsMissing as e:
+        sys.exit(str(e))
     try:
         hits = Searcher(conn, Embedder(), reranker=load_reranker(), min_relevance=min_relevance()).search(args.query, limit=args.limit)
     except RuntimeError as e:
@@ -134,6 +146,12 @@ def cmd_serve(args):
     serve()
 
 
+def cmd_doctor(args):
+    from .doctor import run
+
+    sys.exit(run())
+
+
 def cmd_status(args):
     conn = db.connect(paths.db_path())
     rows = conn.execute(
@@ -161,19 +179,16 @@ def cmd_status(args):
 
 
 def cmd_models_pull(args):
-    from .embed import Embedder
-    from .rerank import Reranker
-    from .transcribe import Transcriber
+    from . import models
 
-    t = Transcriber(allow_download=True)
-    print(f"whisper: {t.model_name} ({t.device})")
-    t._load()
-    e = Embedder(allow_download=True)
-    print(f"embedder: {e.model_name}")
-    e.encode(["warm up"])
-    r = Reranker(allow_download=True)
-    print(f"reranker: {r.model_name}")
-    r.score("warm up", ["warm up"])
+    todo = [k for k in ("whisper", "embedder", "reranker") if not models.present(k)]
+    if not todo:
+        print("all models are already on disk")
+        return
+    try:
+        models.download(todo)
+    except Exception as e:
+        sys.exit(f"download failed: {e}")
     print("ok")
 
 
@@ -217,6 +232,7 @@ def main(argv=None):
 
     sub.add_parser("serve", help="run the MCP server on stdio").set_defaults(fn=cmd_serve)
     sub.add_parser("status", help="show what is indexed").set_defaults(fn=cmd_status)
+    sub.add_parser("doctor", help="check models, GPU, yt-dlp and the index, and say how to fix what is wrong").set_defaults(fn=cmd_doctor)
 
     m = sub.add_parser("models", help="model management")
     msub = m.add_subparsers(dest="mcmd", required=True)

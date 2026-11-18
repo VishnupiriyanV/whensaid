@@ -58,6 +58,7 @@ class Transcriber:
         self.allow_download = allow_download
         self._pipe = None
         self.last_confidence = None  # of the most recent transcribe() call
+        self.on_progress = None      # called as (seconds transcribed, total seconds) while a file runs
 
     def _load(self):
         from faster_whisper import BatchedInferencePipeline, WhisperModel
@@ -97,10 +98,13 @@ class Transcriber:
             without_timestamps=False,
             word_timestamps=True,
         )
+        total = len(audio) / 16000
         out, probs = [], []
         for s in segs:
             out += split_on_gaps(s.words or [], fallback=s)
             probs += [w.probability for w in (s.words or [])]
+            if self.on_progress:
+                self.on_progress(s.end, total)
         self.last_confidence = sum(probs) / len(probs) if probs else None
         if len(probs) >= MIN_WORDS and self.last_confidence < min_confidence():
             raise Unintelligible(

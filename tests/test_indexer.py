@@ -259,3 +259,29 @@ def test_confidence_check_thresholds(monkeypatch):
     monkeypatch.setenv("WHENSAID_MIN_CONFIDENCE", "0")
     t._pipe = fake_pipe(0.5, 100)
     assert t.transcribe("a.wav")[0]  # check switched off
+
+
+def test_long_files_report_progress_in_tens_of_percent(tmp_path):
+    import io
+
+    media = tmp_path / "m"
+    media.mkdir()
+    for n in ("big.mp4", "tiny.mp4"):
+        (media / n).write_bytes(b"x")
+    conn = db.connect(tmp_path / "pg.db")
+    conn.execute("insert into roots values (?)", (str(media),))
+
+    class Slow(FakeTranscriber):
+        on_progress = None
+
+        def transcribe(self, path):
+            total = 7200.0 if path.endswith("big.mp4") else 60.0
+            for t in range(0, int(total), 30):  # a segment every 30 s
+                self.on_progress(t + 30, total)
+            return super().transcribe(path)
+
+    log = io.StringIO()
+    indexer.run(conn, Slow(), FakeEmbedder(), log=log)
+    lines = [ln.strip() for ln in log.getvalue().splitlines() if "%" in ln]
+    assert [ln.split("%")[0] for ln in lines] == [str(p) for p in range(0, 101, 10)]  # 0,10,...,100 once each
+    assert lines[5].endswith("1:00:00 of 2:00:00") and len(lines) == 11  # nothing at all for the 60 s file
