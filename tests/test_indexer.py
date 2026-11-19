@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 from whensaid import db, indexer
@@ -32,19 +33,19 @@ def test_run_and_reindex(tmp_path):
     conn = db.connect(tmp_path / "t.db")
     conn.execute("insert into roots values (?)", (str(media),))
 
-    counts = indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open("/dev/null", "w"))
+    counts = indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open(os.devnull, "w"))
     assert counts == {"done": 1, "no_audio": 1, "failed": 1, "skipped": 0}
     assert conn.execute("select count(*) from chunks").fetchone()[0] == 1
     hit = conn.execute("select rowid from chunks_fts where chunks_fts match 'gradient'").fetchall()
     assert len(hit) == 1
 
     # second run: the done and no_audio files are untouched, only the failed one retries
-    counts = indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open("/dev/null", "w"))
+    counts = indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open(os.devnull, "w"))
     assert counts == {"done": 0, "no_audio": 0, "failed": 1, "skipped": 0}
 
     # a changed file is picked up and its old rows replaced, not duplicated
     (media / "talk.mp4").write_bytes(b"y" * 20)
-    indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open("/dev/null", "w"))
+    indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=open(os.devnull, "w"))
     assert conn.execute("select count(*) from chunks").fetchone()[0] == 1
     assert conn.execute("select count(*) from chunks_fts").fetchone()[0] == 1
 
@@ -63,7 +64,7 @@ def test_rechunk_rebuilds_from_segments(tmp_path):
     media = make_tree(tmp_path)
     conn = db.connect(tmp_path / "t.db")
     conn.execute("insert into roots values (?)", (str(media),))
-    log = open("/dev/null", "w")
+    log = open(os.devnull, "w")
     indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=log)
     conn.execute("delete from chunks")  # pretend the chunks are stale or missing
     conn.execute("delete from chunks_fts")
@@ -78,7 +79,7 @@ def test_watch_picks_up_new_files_and_does_not_retry_failures(tmp_path):
     media = make_tree(tmp_path)
     conn = db.connect(tmp_path / "w.db")
     conn.execute("insert into roots values (?)", (str(media),))
-    log = open("/dev/null", "w")
+    log = open(os.devnull, "w")
     calls = {"n": 0}
 
     def sleep(_):
@@ -113,7 +114,7 @@ def indexed(tmp_path, names=("talk.mp4", "other.mp4")):
         (media / n).write_bytes(b"x" * 10)
     conn = db.connect(tmp_path / "p.db")
     conn.execute("insert into roots values (?)", (str(media),))
-    log = open("/dev/null", "w")
+    log = open(os.devnull, "w")
     indexer.run(conn, FakeTranscriber(), FakeEmbedder(), log=log)
     return media, conn, log
 
@@ -204,7 +205,7 @@ def test_unintelligible_audio_is_skipped_with_the_reason(tmp_path):
         (media / n).write_bytes(b"x")
     conn = db.connect(tmp_path / "q.db")
     conn.execute("insert into roots values (?)", (str(media),))
-    log = open("/dev/null", "w")
+    log = open(os.devnull, "w")
     calls = []
 
     class T(FakeTranscriber):

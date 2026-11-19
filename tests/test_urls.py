@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 import numpy as np
@@ -8,7 +9,7 @@ from whensaid.chunk import Segment
 from whensaid.search import Searcher
 from whensaid.util import deep_link
 
-LOG = open("/dev/null", "w")
+LOG = open(os.devnull, "w")
 
 
 

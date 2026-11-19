@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 from whensaid import db, indexer, subtitles
@@ -88,7 +89,7 @@ def test_index_uses_subtitles_only_when_asked_and_present(tmp_path):
     (media / "with.srt").write_text(SRT)
     conn = db.connect(tmp_path / "s.db")
     conn.execute("insert into roots values (?)", (str(media),))
-    log = open("/dev/null", "w")
+    log = open(os.devnull, "w")
 
     class Either:
         def transcribe(self, path):
