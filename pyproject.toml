@@ -1,6 +1,6 @@
 [project]
 name = "whensaid"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local, offline search over your video and audio recordings, exposed to AI agents over MCP."
 readme = "README.md"
 license = "MIT"

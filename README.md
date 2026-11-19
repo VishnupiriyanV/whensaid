@@ -77,6 +77,8 @@ Measured on the 65-hour public-domain index above, with questions written as par
 - Speech only. It does not look at the picture.
 - Transcription is the slow part: about 14x realtime on the GPU it was tested on, about 6x on 12 CPU cores with the
   default model. `WHENSAID_WHISPER_MODEL=small.en` trades accuracy for speed.
+- A transcript is untrusted text. Someone can say "ignore your instructions" in a recording, and your agent will read it
+  as it reads any other search result, so treat hits as data, not commands.
 - Web videos are for videos you are allowed to download; each site's terms still apply and are your responsibility.
 
 ## Details
