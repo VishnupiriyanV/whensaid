@@ -12,6 +12,10 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for what is next and [docs/PLAN.md](docs/
 
 ## A worked example
 
+![terminal demo: two searches that find the passage and one off-topic question that returns nothing](docs/demo.gif)
+
+The recording above is real `whensaid` output (rendered by `scripts/make_demo.py`), run in a terminal rather than from an agent session. Text version:
+
 The index here is 198 public-domain recordings (65 hours of audiobooks and old radio). The question is paraphrased,
 not a quote:
 
