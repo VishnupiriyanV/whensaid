@@ -1,3 +1,20 @@
+import re
+
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+
+
+def clean_text(text: str | None) -> str | None:
+    """Text that came from the web (a video title) with control characters removed, so a hostile title cannot
+    carry terminal escape sequences into `whensaid status` or `search`."""
+    if text is None:
+        return None
+    return _CONTROL.sub("", text).strip()
+
+
+def is_web_url(url: str) -> bool:
+    return re.match(r"https?://[^\s]+$", url or "", re.I) is not None
+
+
 def canonical_url(url: str) -> str:
     """The form a youtube video is stored under (no list, t or si noise), others unchanged."""
     from urllib.parse import parse_qs, urlparse

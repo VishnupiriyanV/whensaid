@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 from . import subtitles
+from .util import clean_text, is_web_url
 from .paths import home
 
 
@@ -130,7 +131,7 @@ class YtDlp:
             args.append("--no-playlist")
         data = json.loads(self._run(args, url))
         if data.get("_type") != "playlist":
-            return "video", data.get("title"), [_entry(data)]
+            return "video", clean_text(data.get("title")), [_entry(data)]
         found: list[dict] = []
 
         def walk(node):
@@ -143,7 +144,7 @@ class YtDlp:
                     found.append(_entry(e))
 
         walk(data)
-        return "playlist", data.get("title"), found
+        return "playlist", clean_text(data.get("title")), found
 
     def acquire(self, url: str, transcriber) -> tuple[list, float, str]:
         """(segments, duration, how) for one video. how is manual, auto or whisper."""
@@ -190,4 +191,6 @@ def _entry(e: dict) -> dict:
     url = e.get("webpage_url") or e.get("url")
     if extractor == "youtube" and e.get("id"):
         url = f"https://www.youtube.com/watch?v={e['id']}"  # drop &list=, &t=, &si= so one video is one source
-    return {"key": f"{extractor}:{vid}", "url": url, "title": e.get("title"), "live": LIVE.get(e.get("live_status"))}
+    if url and not is_web_url(url):
+        url = None  # a stored link is handed to the agent and the user, so only http(s) goes in
+    return {"key": f"{extractor}:{vid}", "url": url, "title": clean_text(e.get("title")), "live": LIVE.get(e.get("live_status"))}

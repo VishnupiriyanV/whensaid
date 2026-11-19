@@ -328,3 +328,24 @@ def test_spoken_language_is_not_fooled_by_dubbed_tracks():
     assert fetch.spoken_language({"automatic_captions": {"ar-orig": [], "ta-orig": []}}) is None  # dubs, can't tell
     assert fetch.spoken_language({"automatic_captions": {"ar-orig": [], "en-orig": []}}) == "en"
     assert fetch.spoken_language({}) is None  # other sites: no opinion, go on
+
+
+def test_only_web_addresses_can_be_added(tmp_path):
+    import pytest
+    from whensaid import db
+    from whensaid.fetch import FetchError
+    from whensaid.urls import add_url
+
+    conn = db.connect(str(tmp_path / "t.db"))
+    for bad in ("file:///etc/passwd", "--exec=touch x", "ftp://example.com/a", "javascript:alert(1)", ""):
+        with pytest.raises(FetchError):
+            add_url(conn, object(), bad)
+
+
+def test_titles_lose_control_characters():
+    from whensaid.fetch import _entry
+    from whensaid.util import clean_text
+
+    assert clean_text("a\x1b[31mred\x1b[0m\x07 title\x9b") == "a[31mred[0m title"
+    e = _entry({"id": "x1", "extractor_key": "Generic", "webpage_url": "javascript:alert(1)", "title": "t\x1b]0;pwn\x07"})
+    assert e["url"] is None and "\x1b" not in e["title"] and "\x07" not in e["title"]

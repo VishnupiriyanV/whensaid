@@ -4,7 +4,8 @@ import sys
 import time
 
 from .db import forget_source
-from .util import canonical_url
+from .fetch import FetchError
+from .util import canonical_url, is_web_url
 
 REFRESH_AFTER = 3600  # seconds between re-listing a playlist or channel, so --watch doesn't hammer the site
 
@@ -29,6 +30,8 @@ def register(conn, entry: dict, feed_url: str | None = None) -> bool:
 
 
 def add_url(conn, fetcher, url: str, limit: int = 200, no_playlist: bool = False, log=sys.stderr) -> dict:
+    if not is_web_url(url):
+        raise FetchError("only http:// and https:// addresses can be added")
     kind, title, entries = fetcher.entries(url, limit, no_playlist)
     feed = url if kind == "playlist" else None
     new = 0
