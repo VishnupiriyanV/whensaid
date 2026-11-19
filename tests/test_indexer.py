@@ -218,7 +218,7 @@ def test_unintelligible_audio_is_skipped_with_the_reason(tmp_path):
             return super().transcribe(path)
 
     assert indexer.run(conn, T(), FakeEmbedder(), log=log) == {"done": 1, "no_audio": 0, "failed": 0, "skipped": 1}
-    got = {r["path"].rsplit("/", 1)[1]: (r["status"], r["confidence"], r["error"]) for r in conn.execute("select * from sources")}
+    got = {os.path.basename(r["path"]): (r["status"], r["confidence"], r["error"]) for r in conn.execute("select * from sources")}
     assert got["english.mp4"] == ("done", 0.97, None)
     assert got["foreign.mp4"][0] == "skipped" and "not English" in got["foreign.mp4"][2]
     assert conn.execute("select count(*) from chunks").fetchone()[0] == 1  # nothing from the garbage transcript is searchable

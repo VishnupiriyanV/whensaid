@@ -73,8 +73,9 @@ def _resolve_source(conn, file: str):
         rows = conn.execute("select * from sources where url = ?", (file,)).fetchall()
     if not rows:
         # compared in python: a LIKE here would treat _ and % in file names as wildcards
-        tail = os.sep + file.lstrip(os.sep)
-        rows = [r for r in conn.execute("select * from sources") if r["path"].endswith(tail)]
+        name = file.lstrip("/\\")
+        rows = [r for r in conn.execute("select * from sources")
+                if r["path"].endswith("/" + name) or r["path"].endswith("\\" + name)]
     if not rows and _has_web_cols(conn):
         rows = conn.execute("select * from sources where title = ?", (file,)).fetchall()  # search shows web videos by title
     if not rows:

@@ -25,7 +25,8 @@ def target_path(media_path: str, out_dir: Path | None, fmt: str, kind: str = "fi
     if out_dir is None:  # next to the media file, same name
         return Path(media_path).with_suffix("." + fmt)
     # mirror the full path so two files with the same name never collide
-    return out_dir / (media_path.lstrip("/") + "." + fmt)
+    mirrored = media_path.replace(":", "").lstrip("/\\")  # drive letters have no place in a relative path
+    return out_dir / (mirrored + "." + fmt)
 
 
 def export_all(conn, out_dir: Path | None, fmt: str = "txt", overwrite: bool = False) -> tuple[list[Path], list[Path]]:
