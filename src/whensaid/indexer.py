@@ -1,4 +1,3 @@
-import fcntl
 import os
 import sys
 import time
@@ -11,6 +10,11 @@ from .db import forget_chunks, forget_source, get_meta, set_meta
 from .paths import home
 from .fetch import Skip
 from .transcribe import NoAudio, Unintelligible
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 MEDIA_EXTS = {
     ".mp4", ".mkv", ".mov", ".avi", ".webm", ".m4v",
@@ -43,20 +47,41 @@ def claim_embed_model(conn, embedder) -> None:
         )
 
 
+def _try_lock(f, shared: bool = False) -> bool:
+    """Take the lock without waiting. False if another process holds it."""
+    if sys.platform == "win32":
+        # no shared locks here; locking one byte is enough to tell who is running
+        try:
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError:
+            return False
+        return True
+    try:
+        fcntl.flock(f, (fcntl.LOCK_SH if shared else fcntl.LOCK_EX) | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return False
+    return True
+
+
+def _unlock(f):
+    if sys.platform == "win32":
+        f.seek(0)
+        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        fcntl.flock(f, fcntl.LOCK_UN)
+
+
 @contextmanager
 def index_lock():
     # only one indexer at a time, mcp servers just read.
-    # windows: swap fcntl for msvcrt.locking when we get there
-    f = open(home() / "index.lock", "w")
-    try:
-        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+    f = open(home() / "index.lock", "a+")
+    if not _try_lock(f):
         f.close()
         raise AlreadyRunning()
     try:
         yield
     finally:
-        fcntl.flock(f, fcntl.LOCK_UN)
+        _unlock(f)
         f.close()
 
 
@@ -66,12 +91,10 @@ def indexer_running() -> bool:
     path = home() / "index.lock"
     if not path.exists():
         return False
-    with open(path, "w") as f:
-        try:
-            fcntl.flock(f, fcntl.LOCK_SH | fcntl.LOCK_NB)
-        except BlockingIOError:
+    with open(path, "a+") as f:
+        if not _try_lock(f, shared=True):
             return True
-        fcntl.flock(f, fcntl.LOCK_UN)
+        _unlock(f)
         return False
 
 
