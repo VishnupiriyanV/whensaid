@@ -3,7 +3,19 @@ name = "whensaid"
 version = "0.1.0"
 description = "Local, offline search over your video and audio recordings, exposed to AI agents over MCP."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "VishnupiriyanV" }]
+keywords = ["mcp", "whisper", "transcription", "search", "video", "audio", "local", "offline"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Text Processing :: Indexing",
+]
 requires-python = ">=3.11"
 dependencies = [
   "mcp>=2,<3",
@@ -17,6 +29,10 @@ dependencies = [
 cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12"]  # what ctranslate2 needs on an NVIDIA GPU
 url = ["yt-dlp"]  # for `whensaid add-url`
 dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/VishnupiriyanV/whensaid"
+Issues = "https://github.com/VishnupiriyanV/whensaid/issues"
 
 [project.scripts]
 whensaid = "whensaid.cli:main"

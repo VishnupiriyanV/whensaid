@@ -11,7 +11,7 @@ machine, and nothing is uploaded.
 
 ## A worked example
 
-![terminal demo: two searches that find the passage and one off-topic question that returns nothing](assets/demo.gif)
+![terminal demo: two searches that find the passage and one off-topic question that returns nothing](https://raw.githubusercontent.com/VishnupiriyanV/whensaid/main/assets/demo.gif)
 
 The recording above is real `whensaid` output (rendered by `scripts/make_demo.py`), run in a terminal rather than from an agent session. Text version:
 
@@ -30,7 +30,7 @@ Through MCP the agent gets the same thing as JSON (`file`, `path`, `start`, `at`
 ## Use it
 
 ```bash
-pip install -e ".[url]"                     # from a clone, until it is on PyPI. Add cuda on an NVIDIA GPU: ".[cuda,url]"
+pip install "whensaid[url]"                 # add cuda on an NVIDIA GPU: "whensaid[cuda,url]"  (or: uv tool install "whensaid[url]")
 whensaid doctor                             # checks the GPU, models, yt-dlp and the index, says how to fix problems
 whensaid add ~/Videos/talks                 # register a folder of recordings
 whensaid add-url https://www.youtube.com/playlist?list=...   # or a video, playlist or channel
