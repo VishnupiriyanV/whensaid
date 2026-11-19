@@ -1,10 +1,10 @@
-"""Renders docs/demo.gif from real `whensaid` output. Needs pillow.
+"""Renders assets/demo.gif from real `whensaid` output. Needs pillow.
 WHENSAID_HOME must point at an index (the README one is 65 h of public-domain audio)."""
 import shutil, subprocess, sys, textwrap, os
 from PIL import Image, ImageDraw, ImageFont
 W_BIN = shutil.which("whensaid")
 env = dict(os.environ)
-OUT = sys.argv[1] if len(sys.argv) > 1 else "docs/demo.gif"
+OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/demo.gif"
 cmds=[["status"],
       ["search","two men arguing about what day of the month it is","-n","1"],
       ["search","a mouse tribe claiming rights over everyone else","-n","1"],

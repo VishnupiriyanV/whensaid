@@ -8,11 +8,10 @@ timestamp and the passage; for web videos, a link that opens the video at that m
 machine, and nothing is uploaded.
 
 **Status: pre-alpha.** Tested on Linux (CI also runs on macOS). Runs on an NVIDIA GPU or on CPU. English only.
-See [docs/ROADMAP.md](docs/ROADMAP.md) for what is next and [docs/PLAN.md](docs/PLAN.md) for the research and measured results.
 
 ## A worked example
 
-![terminal demo: two searches that find the passage and one off-topic question that returns nothing](docs/demo.gif)
+![terminal demo: two searches that find the passage and one off-topic question that returns nothing](assets/demo.gif)
 
 The recording above is real `whensaid` output (rendered by `scripts/make_demo.py`), run in a terminal rather than from an agent session. Text version:
 
@@ -56,8 +55,7 @@ Indexing is only ever done by the `whensaid index` command, never by the agent.
 
 ## How good is it
 
-Measured on the 65-hour public-domain index above, with questions written as paraphrases (details and caveats in
-[docs/PLAN.md](docs/PLAN.md)):
+Measured on the 65-hour public-domain index above, with questions written as paraphrases (the question sets are in `tests/`, the scripts in `scripts/`):
 
 - The right passage is the top result for 83-97% of questions and in the top 5 for 96-100%, depending on the question set.
 - Off-topic questions: 33 of 40 return nothing, and 6 of the other 7 come back marked `weak`.
@@ -65,8 +63,9 @@ Measured on the 65-hour public-domain index above, with questions written as par
   questions: grep got 33 right and whensaid 31. That is a tie within noise for one run each, **so whensaid is not
   more accurate than grep at this size**. What it adds is speed (an agent finished a batch of 8 questions in about a
   minute instead of about nine), no export step, timestamp links for web videos, and a library that persists between
-  sessions. The write-up is in [docs/experiments](docs/experiments/2026-11-grep-vs-whensaid-65h/README.md), including
-  the display bug that made the first two runs look much worse.
+  sessions. One run per arm, questions written by
+  someone who had read the transcripts. An earlier run looked much worse (25 of 36) only because the CLI cut each
+  passage to 200 characters; that is fixed.
 - Not measured: word error rate against human transcripts, noisy or multi-speaker recordings beyond old radio, and any
   hardware other than one Linux laptop (12 cores, RTX 3050).
 
