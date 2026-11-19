@@ -7,7 +7,7 @@ Your agent (Claude Code, Cursor, ...) calls `search("when did they talk about X"
 timestamp and the passage; for web videos, a link that opens the video at that moment. Everything runs on your
 machine, and nothing is uploaded.
 
-**Status: pre-alpha.** Tested on Linux (CI also runs on macOS). Runs on an NVIDIA GPU or on CPU. English only.
+**Status: pre-alpha.** Tested on Linux; CI also runs the tests and a real search on macOS and Windows. Runs on an NVIDIA GPU or on CPU. English only.
 
 ## A worked example
 
@@ -73,7 +73,7 @@ Measured on the 65-hour public-domain index above, with questions written as par
 
 - Python 3.11 to 3.14. On 3.15 `pip install` fails for now because onnxruntime has no wheels for it yet.
 - English only. Videos in other languages, and recordings the model is unsure of, are skipped (see below).
-- Linux is the tested platform; macOS runs in CI but nobody has used it daily. Windows is untried.
+- Linux is the tested platform. macOS and Windows pass CI (tests plus a real index-and-search run on CPU), but nobody has used them daily, and the NVIDIA GPU path is untested on Windows.
 - Speech only. It does not look at the picture.
 - Transcription is the slow part: about 14x realtime on the GPU it was tested on, about 6x on 12 CPU cores with the
   default model. `WHENSAID_WHISPER_MODEL=small.en` trades accuracy for speed.

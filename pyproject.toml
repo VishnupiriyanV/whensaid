@@ -1,6 +1,6 @@
 [project]
 name = "whensaid"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local, offline search over your video and audio recordings, exposed to AI agents over MCP."
 readme = "README.md"
 license = "MIT"
@@ -12,6 +12,8 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: POSIX :: Linux",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: MacOS",
   "Programming Language :: Python :: 3",
   "Topic :: Multimedia :: Sound/Audio :: Speech",
   "Topic :: Text Processing :: Indexing",
