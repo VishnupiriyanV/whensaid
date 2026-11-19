@@ -71,6 +71,7 @@ Measured on the 65-hour public-domain index above, with questions written as par
 
 ## Limits
 
+- Python 3.11 to 3.14. On 3.15 `pip install` fails for now because onnxruntime has no wheels for it yet.
 - English only. Videos in other languages, and recordings the model is unsure of, are skipped (see below).
 - Linux is the tested platform; macOS runs in CI but nobody has used it daily. Windows is untried.
 - Speech only. It does not look at the picture.
